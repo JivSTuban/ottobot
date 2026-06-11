@@ -110,6 +110,124 @@ A Filipino lead receives a natural Tagalog conversation that ends in a confirmed
 | FastAPI WebSocket `ConnectionManager` pattern | Official FastAPI pattern for multi-client real-time chat; directly applicable to demo split-screen UI | — Pending |
 | Supabase RLS on messages and leads | Each business owner sees only their data; row-level security enforced at DB layer | — Pending |
 
+## Dependencies & Versioning
+
+> **Policy:** Before installing or upgrading any dependency, query Context7 for that library's current docs.
+> Use `/resolve-library-id` then `/query-docs` to get the exact install command, version constraints, and breaking changes.
+> Never rely on training data for version numbers — they go stale. Context7 is the source of truth.
+
+### Python Backend — `requirements.txt`
+
+Verified via Context7 on 2026-06-11. Re-verify before any install.
+
+```txt
+# Runtime
+python>=3.12,<3.13
+
+# Agent framework
+langgraph==1.2.4                        # context7: /langchain-ai/langgraph
+langchain-core>=1.4.0,<2               # pinned by langgraph 1.2.4 pyproject.toml
+langchain>=0.3.0,<2                    # compatible with langchain-core >=1.4
+langgraph-checkpoint-postgres>=4.1.0,<5 # PostgresSaver for Supabase persistence
+langgraph-prebuilt>=1.1.0,<1.2.0       # prebuilt nodes (tool node, react agent)
+
+# LLM routing
+litellm==1.83.3                         # context7: /websites/litellm_ai
+
+# API server
+fastapi[standard]==0.128.0              # context7: /fastapi/fastapi
+uvicorn[standard]>=0.34.0,<1.0.0       # ASGI server for FastAPI
+pydantic>=2.9.0,<3.0.0                 # pinned by fastapi pyproject.toml
+
+# Database
+supabase>=2.0.0,<3.0.0                 # context7: /supabase/supabase (Python client)
+psycopg[binary]>=3.1.0,<4.0.0         # PostgresSaver requires psycopg v3
+
+# LLM provider SDKs (free tiers)
+groq>=0.13.0,<1.0.0                    # Groq Python SDK — Llama 4 Maverick
+google-generativeai>=0.8.0,<1.0.0     # Gemini Flash fallback
+
+# Utilities
+python-dotenv>=1.0.0,<2.0.0
+websockets>=13.0,<14.0
+httpx>=0.27.0,<1.0.0
+```
+
+### LiteLLM Router config — `litellm_config.yaml`
+
+```yaml
+model_list:
+  - model_name: tagalog-agent           # virtual model name used by agent
+    litellm_params:
+      model: groq/meta-llama/llama-4-maverick-17b-128e-instruct
+      api_key: os.environ/GROQ_API_KEY
+    rpm: 30                              # Groq free tier limit
+
+  - model_name: tagalog-agent           # same virtual name = automatic fallback
+    litellm_params:
+      model: gemini/gemini-2.0-flash
+      api_key: os.environ/GEMINI_API_KEY
+    rpm: 15
+
+  - model_name: tagalog-agent
+    litellm_params:
+      model: mistral/mistral-small-latest
+      api_key: os.environ/MISTRAL_API_KEY
+    rpm: 10
+
+litellm_settings:
+  num_retries: 3
+  request_timeout: 30
+  fallbacks: [{"tagalog-agent": ["tagalog-agent"]}]
+
+router_settings:
+  routing_strategy: usage-based-routing  # routes away from models hitting RPM limits
+  num_retries: 2
+  timeout: 30
+```
+
+### Node.js Frontend — `package.json` key deps
+
+Verified via Context7 on 2026-06-11. Re-verify before any install.
+
+```json
+{
+  "engines": { "node": ">=22.0.0" },
+  "dependencies": {
+    "next": "^15.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "@supabase/supabase-js": "^2.0.0",
+    "typescript": "^5.0.0"
+  }
+}
+```
+
+### Context7 Library IDs (resolved 2026-06-11)
+
+Use these IDs directly with `/query-docs` — skip re-resolving:
+
+| Library | Context7 ID | Score |
+|---|---|---|
+| LangGraph (Python) | `/websites/langchain_oss_python_langgraph` | 77.3 |
+| LiteLLM | `/websites/litellm_ai` | 92.0 |
+| FastAPI | `/websites/fastapi_tiangolo` | 81.5 |
+| Supabase | `/supabase/supabase` | 89.5 |
+
+### How to use Context7 when working on this project
+
+Before any install, upgrade, or new integration — always run:
+
+```
+/resolve-library-id [library name]     → get the Context7 ID
+/query-docs [id] [specific question]   → get current docs, install commands, breaking changes
+```
+
+Examples:
+- Adding a new LangGraph feature: `/query-docs /websites/langchain_oss_python_langgraph "how to add a conditional edge for escalation"`
+- Upgrading LiteLLM: `/query-docs /websites/litellm_ai "breaking changes in latest version migration guide"`
+- Supabase RLS: `/query-docs /supabase/supabase "row level security policy for per-tenant lead isolation"`
+
 ## Evolution
 
 This document evolves at phase transitions and milestone boundaries.
