@@ -1,0 +1,28 @@
+model_list:
+  - model_name: chat
+    litellm_params:
+      model: groq/meta-llama/llama-4-maverick-17b-128e-instruct
+      api_key: os.environ/GROQ_API_KEY
+      rpm: 30
+      tpm: 6000
+
+  - model_name: chat
+    litellm_params:
+      model: gemini/gemini-1.5-flash
+      api_key: os.environ/GEMINI_API_KEY
+      rpm: 15
+
+  - model_name: chat
+    litellm_params:
+      model: mistral/mistral-small-latest
+      api_key: os.environ/MISTRAL_API_KEY
+
+router_settings:
+  routing_strategy: usage-based-routing-v2
+  num_retries: 2
+  retry_after: 1
+  fallbacks:
+    - chat:
+        - chat
+        - chat
+  cache_responses: true
