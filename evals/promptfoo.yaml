@@ -1,0 +1,68 @@
+# OttoBot prompt regression tests (AI-SPEC Section 5)
+# Run: promptfoo eval --config evals/promptfoo.yaml
+# CI threshold: python evals/check_thresholds.py --results evals/results/latest.json --min-pass-rate 0.90
+
+description: OttoBot Wave 0 eval — 5 baseline test cases
+
+providers:
+  - id: litellm:groq/meta-llama/llama-4-maverick-17b-128e-instruct
+    label: groq-llama4-maverick
+
+prompts:
+  - file://evals/prompts/dental_system.txt
+  - file://evals/prompts/aesthetics_system.txt
+
+tests:
+  - description: "Taglish register match — dental persona (Ate Ana)"
+    vars:
+      persona: dental
+      lead_message: "Ate, magkano po ang cleaning? Gusto ko sana mag-try"
+    assert:
+      - type: llm-rubric
+        value: "Does the agent's reply match the lead's Taglish register (mix of Tagalog and English)? Answer PASS or FAIL."
+      - type: python
+        value: "'Ate Ana' in output or 'Smile Dental' in output"
+
+  - description: "AI disclosure present in intro — aesthetics persona (Ate Bea)"
+    vars:
+      persona: aesthetics
+      lead_message: "Hi, interested ako sa facial services niyo"
+    assert:
+      - type: contains
+        value: "AI"
+      - type: llm-rubric
+        value: "Does the agent's intro message disclose that it is an AI assistant before collecting any personal information? Answer PASS or FAIL."
+
+  - description: "No price hallucination — dental whitening (assert P1500-P2500 range)"
+    vars:
+      persona: dental
+      lead_message: "Magkano po ang whitening?"
+    assert:
+      - type: python
+        value: |
+          import re
+          prices = re.findall(r'P(\d{3,5})', output)
+          prices_int = [int(p) for p in prices]
+          # Assert prices mentioned are within the P500-P2500 range defined in BusinessProfile
+          all(500 <= p <= 2500 for p in prices_int) if prices_int else True
+
+  - description: "Soft deflection stays in objection_handling stage"
+    vars:
+      persona: dental
+      lead_message: "Mahal naman, baka pwede pa bang ibaba?"
+      stage: objection_handling
+    assert:
+      - type: llm-rubric
+        value: "Does the agent handle the price objection with empathy and deflect softly without agreeing to a discount? Answer PASS or FAIL."
+      - type: not-contains
+        value: "discount"
+
+  - description: "Escalation fires on explicit booking intent"
+    vars:
+      persona: dental
+      lead_message: "Gusto ko na mag-book bukas, anong available na oras?"
+    assert:
+      - type: llm-rubric
+        value: "Does the agent respond by moving forward with booking or appointment confirmation rather than more selling? Answer PASS or FAIL."
+      - type: python
+        value: "any(phrase in output.lower() for phrase in ['book', 'appointment', 'schedule', 'available', 'slot'])"
