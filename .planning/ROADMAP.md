@@ -6,13 +6,14 @@ Build an AI outbound sales agent that speaks Tagalog/Taglish and books appointme
 
 ## Phases
 
-- [ ] **Phase 1: Agent Core & Demo UI** — Working LangGraph agent with Tagalog conversation stages, demo split-screen UI
+- [x] **Phase 1: Agent Core & Demo UI** — Working LangGraph agent with Tagalog conversation stages, demo split-screen UI (completed 2026-06-15)
 - [ ] **Phase 2: Appointment Reconciler** — Agent proposes time slots, business owner confirms via app, appointments stored in Supabase
 - [ ] **Phase 3: Escalation Flow** — Hot lead detection, push notification to business owner, escalation state tracking
 - [ ] **Phase 4: Real Channels** — Facebook Messenger and SMS (Semaphore PH) integration, lead source ingestion
 - [ ] **Phase 5: Business Onboarding Website** — Multi-step onboarding form, industry template selection, Supabase Auth
 - [ ] **Phase 6: Mobile App** — Push notifications, lead pipeline dashboard, persona management, availability calendar
 - [ ] **Phase 7: Agency / Multi-Account** — Agency accounts managing multiple business owner sub-accounts
+- [ ] **Phase 8: Autoresearch Loop** — Autonomous overnight prompt/agent optimization via ratchet loop (Karpathy autoresearch pattern adapted for conversation agents)
 
 ## Phase Details
 
@@ -37,7 +38,7 @@ Build an AI outbound sales agent that speaks Tagalog/Taglish and books appointme
 - [x] 01-04-PLAN.md — LangGraph StateGraph builder, route_next_stage, stage detection
 - [x] 01-05-PLAN.md — FastAPI WebSocket + AsyncPostgresSaver lifespan + online guardrails
 - [x] 01-06-PLAN.md — Vite/React split-screen UI (IndustrySelector, LeadChat, OwnerPanel, useWebSocket)
-- [ ] 01-07-PLAN.md — End-to-end dev script + README + manual demo checklist sign-off
+- [x] 01-07-PLAN.md — End-to-end dev script + README + manual demo checklist sign-off
 
 ### Phase 2: Appointment Reconciler
 
@@ -121,14 +122,49 @@ Build an AI outbound sales agent that speaks Tagalog/Taglish and books appointme
 
 **Plans**: TBD
 
+### Phase 8: Autoresearch Loop
+
+**Goal**: An autonomous ratchet loop (inspired by Karpathy's autoresearch) that overnight proposes, tests, and commits prompt/config improvements to the conversation agent — using simulated Taglish conversations as the eval signal, with no human in the loop.
+**Depends on**: Phase 3 (full conversation pipeline must be battle-tested), Phase 4 (real conversation data for building labeled eval dataset)
+**Requirements**: AUTO-01, AUTO-02, AUTO-03, AUTO-04
+**Success Criteria** (what must be TRUE):
+
+  1. A labeled eval dataset of ≥200 simulated Taglish conversations (with ground-truth stage transitions and booking outcomes) is built and versioned
+  2. A single scalar optimization metric is defined and computed reliably (weighted F1 across stage transitions + appointment booking rate)
+  3. An agent loop autonomously edits the scoped "editable zone" (`agent/prompts.py`, stage detection thresholds, LLM routing weights), runs the eval suite, and keeps or reverts each change based on metric delta
+  4. Each accepted change is committed to git with eval score deltas in the commit message — a morning log of N experiments and a measurably better agent
+
+**Editable Zone** (the only files the autoresearch agent may modify):
+
+- `agent/prompts.py` — system prompts, stage-specific instructions, persona templates
+- `agent/stage_detection.py` — keyword/pattern thresholds for stage classification
+- `litellm_config.yaml` — model routing weights and fallback order
+
+**Fixed / Never Touched**:
+
+- `agent/graph.py` — LangGraph state machine structure
+- `agent/models.py` — Pydantic state schemas
+- `api/` — FastAPI server
+- `evals/` — eval harness and labeled dataset (read-only to the loop)
+
+**Recipe** (adapted from Karpathy autoresearch):
+
+- `evals/program.md` — human sets research direction (e.g., "improve objection-handling in aesthetics industry")
+- `evals/run_eval.py` — fixed eval harness, never touched by agent, returns scalar metric
+- Ratchet: propose change → run eval → metric improved? keep + commit : revert → repeat
+- Target: ~10 experiments/hour overnight on CPU (no GPU needed — LLM API calls, not training)
+
+**Plans**: TBD
+
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Agent Core & Demo UI | 6/7 | In Progress|  |
+| 1. Agent Core & Demo UI | 7/7 | Complete   | 2026-06-15 |
 | 2. Appointment Reconciler | 0/TBD | Not started | - |
 | 3. Escalation Flow | 0/TBD | Not started | - |
 | 4. Real Channels | 0/TBD | Not started | - |
 | 5. Business Onboarding Website | 0/TBD | Not started | - |
 | 6. Mobile App | 0/TBD | Not started | - |
 | 7. Agency / Multi-Account | 0/TBD | Not started | - |
+| 8. Autoresearch Loop | 0/TBD | Not started | - |
