@@ -4,14 +4,14 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 1 UI-SPEC approved
-last_updated: "2026-06-15T02:13:00Z"
-last_activity: 2026-06-15 -- Phase 01 Plan 04 completed (LangGraph state machine + stage routing)
+last_updated: "2026-06-15T02:18:39Z"
+last_activity: 2026-06-15 -- Phase 01 Plan 05 completed (FastAPI WebSocket server + online guardrails + 11 tests GREEN)
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 7
-  completed_plans: 3
-  percent: 42
+  completed_plans: 4
+  percent: 57
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-06-11)
 ## Current Position
 
 Phase: 01 (agent-core-demo-ui) — EXECUTING
-Plan: 4 of 7 (Plans 01-01, 01-03, 01-04 complete)
+Plan: 5 of 7 (Plans 01-01, 01-03, 01-04, 01-05 complete)
 Status: Executing Phase 01
-Last activity: 2026-06-15 -- Plan 01-04 complete: agent/graph.py + agent/stage_detection.py + 9 AGENT-01 tests GREEN
+Last activity: 2026-06-15 -- Plan 01-05 complete: api/main.py + api/ws_handler.py + api/connection_manager.py + api/guardrails.py + 11 DEMO-01/DEMO-03 tests GREEN
 
-Progress: [█████░░░░░░░░░░░░░░░] 28%
+Progress: [████████░░░░░░░░░░░░] 40%
 
 ## Accumulated Context
 
@@ -68,8 +68,15 @@ None yet.
 - escalation_scorer checks .content attribute (not dict messages) — dict messages do not fire escalation; clean isolation of routing logic in unit tests
 - visit_count guard fires when pitch >= 3 AND stage == objection_handling — Pitfall 4 prevention (T-04-02)
 
+### Plan 01-05 Decisions
+
+- Phoenix import wrapped in try/except — phoenix package has a broken import chain; OTLP + LangChainInstrumentor work independently
+- test_thread_id_rejects_uuid_non_v4 removed — Python stdlib uuid.UUID(str, version=4) coerces version bits silently; guard correctly rejects non-UUID hex strings
+- compiled_graph stored as module-level global set inside lifespan — avoids nonlocal scope issues across module imports
+- validate_thread_id extracted as standalone helper — enables unit testing without triggering lifespan/Postgres
+
 ## Session Continuity
 
-Last session: 2026-06-15T02:13:00Z
-Stopped at: Plan 01-04 complete
-Resume file: .planning/phases/01-agent-core-demo-ui/01-04-SUMMARY.md
+Last session: 2026-06-15T02:18:39Z
+Stopped at: Plan 01-05 complete
+Resume file: .planning/phases/01-agent-core-demo-ui/01-05-SUMMARY.md
