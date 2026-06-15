@@ -11,7 +11,7 @@ For each item, mark pass / fail / blocked in the `Result` line.
 
 ## AGENT-01 — Stage Progression (7-Step Scripted Conversation)
 
-- [ ] AGENT-01 — Stage badge advances through the full 7-stage state machine during a scripted conversation
+- [x] AGENT-01 — Stage badge advances through the full 7-stage state machine during a scripted conversation
 
 **Steps:**
 1. Open `http://localhost:5173`, select **Dental**, click **Simulan**
@@ -30,13 +30,13 @@ For each item, mark pass / fail / blocked in the `Result` line.
 
 **Expected:** Stage badge transitions through at least 4 distinct stages during the conversation; no infinite loop at any stage; `aget_state()` state event delivered to owner panel after each turn.
 
-Result: __ pass / __ fail / __ blocked
+Result: PASS
 
 ---
 
 ## AGENT-02 — LiteLLM Router Fallback (Groq → Gemini)
 
-- [ ] AGENT-02 — LiteLLM Router falls back from Groq to Gemini on rate-limit (429)
+- [x] AGENT-02 — LiteLLM Router falls back from Groq to Gemini on rate-limit (429)
 
 **Option A — Automated test (preferred):**
 
@@ -54,13 +54,13 @@ Result: __ pass / __ fail / __ blocked
 
 **Expected:** Agent replies successfully even when Groq is rate-limited; fallback to Gemini Flash confirmed in logs; no unhandled 500 error to client.
 
-Result: __ pass / __ fail / __ blocked
+Result: PASS
 
 ---
 
 ## AGENT-03 — Taglish Code-Switching Quality (Human-Judged)
 
-- [ ] AGENT-03 — Agent replies in Taglish matching the register of the lead message (no full-English fallback, no overly formal Tagalog)
+- [x] AGENT-03 — Agent replies in Taglish matching the register of the lead message (no full-English fallback, no overly formal Tagalog)
 
 **Steps:**
 1. Open `http://localhost:5173`, select **Dental**, click **Simulan**
@@ -77,13 +77,13 @@ Result: __ pass / __ fail / __ blocked
 
 **Expected:** Subjective quality check — developer signs off that register matches a real Filipino sales manager conversation style (AI-SPEC Section 1b rubric: warm, informal, code-switching matches lead's register).
 
-Result: __ pass / __ fail / __ blocked
+Result: PASS
 
 ---
 
 ## AGENT-04 — Industry Persona Templates (3 Industries)
 
-- [ ] AGENT-04 — Agent introduces with the correct persona name for each industry (Ate Ana / Ate Bea / Kuya Marco)
+- [x] AGENT-04 — Agent introduces with the correct persona name for each industry (Ate Ana / Ate Bea / Kuya Marco)
 
 **Steps:**
 1. Open **Tab 1**: `http://localhost:5173`, select **Dental**, click **Simulan**, send `"Hello"`
@@ -95,13 +95,13 @@ Result: __ pass / __ fail / __ blocked
 
 **Expected:** Each tab gets a distinct thread_id (UUID v4 via `crypto.randomUUID()`); each agent intro message uses the correct name and industry context; no persona bleeds across tabs.
 
-Result: __ pass / __ fail / __ blocked
+Result: PASS
 
 ---
 
 ## AGENT-05 — Escalation Alert (Booking Phrase Detection)
 
-- [ ] AGENT-05 — Escalation alert appears in the owner panel within 5 seconds of explicit booking phrase
+- [x] AGENT-05 — Escalation alert appears in the owner panel within 5 seconds of explicit booking phrase
 
 **Steps:**
 1. Open `http://localhost:5173`, select any industry, click **Simulan**
@@ -115,13 +115,13 @@ Result: __ pass / __ fail / __ blocked
 - Escalation alert banner appears with text "HOT LEAD — Tawagan na!" (role="alert")
 - Alert auto-dismisses after ~8 seconds OR persists until next message
 
-Result: __ pass / __ fail / __ blocked
+Result: PASS
 
 ---
 
 ## DEMO-01 — WebSocket Server Health + Thread ID Validation
 
-- [ ] DEMO-01 — API health endpoint returns expected JSON; invalid thread IDs are rejected
+- [x] DEMO-01 — API health endpoint returns expected JSON; invalid thread IDs are rejected
 
 **Steps:**
 1. Run: `curl -s http://localhost:8000/health`
@@ -161,13 +161,13 @@ Result: __ pass / __ fail / __ blocked
 
 **Expected:** Health endpoint returns `{"ok":true,"compiled":true}`. Invalid thread IDs rejected with code 1008. Valid UUID4 receives streaming events.
 
-Result: __ pass / __ fail / __ blocked
+Result: PASS
 
 ---
 
 ## DEMO-02 — Split-Screen UI Layout
 
-- [ ] DEMO-02 — Both panels visible at 50/50 split; owner panel mirrors lead's conversation; stage badge updates after each turn
+- [x] DEMO-02 — Both panels visible at 50/50 split; owner panel mirrors lead's conversation; stage badge updates after each turn
 
 **Steps:**
 1. Open `http://localhost:5173`, select **Dental**, click **Simulan**
@@ -186,13 +186,13 @@ Result: __ pass / __ fail / __ blocked
 
 **Expected:** Both panels always visible side-by-side; no overflow clipping on typical 1280px+ display; stage badge text matches the `stageToLeadStatus` mapping (Tinatasa / HOT / Naka-book / Bago).
 
-Result: __ pass / __ fail / __ blocked
+Result: PASS
 
 ---
 
 ## DEMO-03 — Conversation Persistence (Page Reload)
 
-- [ ] DEMO-03 — Conversation history survives a page reload (same thread_id resumes prior turns)
+- [x] DEMO-03 — Conversation history survives a page reload (same thread_id resumes prior turns)
 
 **Steps:**
 1. Open `http://localhost:5173`, select **Dental**, click **Simulan**
@@ -205,13 +205,13 @@ Result: __ pass / __ fail / __ blocked
 
 **Expected:** After reload, all 3 prior turns are visible in the chat panel; the stage badge shows the same stage as before reload; the conversation continues from where it left off (no restart to intro stage).
 
-Result: __ pass / __ fail / __ blocked
+Result: PASS
 
 ---
 
 ## NPC 2024-04 — AI Disclosure on First Contact
 
-- [ ] NPC 2024-04 — The agent's intro message contains an "AI assistant" disclosure before any data-collection question
+- [x] NPC 2024-04 — The agent's intro message contains an "AI assistant" disclosure before any data-collection question
 
 **Steps:**
 1. Open `http://localhost:5173`, select any industry, click **Simulan**
@@ -222,7 +222,7 @@ Result: __ pass / __ fail / __ blocked
 
 4. Confirm no data-collection question precedes the disclosure
 
-Result: __ pass / __ fail / __ blocked
+Result: PASS
 
 ---
 
@@ -230,16 +230,16 @@ Result: __ pass / __ fail / __ blocked
 
 | Requirement | Description | Result |
 |-------------|-------------|--------|
-| AGENT-01 | Stage progression (7 stages) | __ |
-| AGENT-02 | LiteLLM fallback (Groq → Gemini) | __ |
-| AGENT-03 | Taglish code-switching quality | __ |
-| AGENT-04 | Persona templates (3 industries) | __ |
-| AGENT-05 | Escalation alert < 5s | __ |
-| DEMO-01 | WebSocket health + UUID validation | __ |
-| DEMO-02 | Split-screen UI 50/50 | __ |
-| DEMO-03 | Conversation persistence on reload | __ |
-| NPC 2024-04 | AI disclosure before data collection | __ |
+| AGENT-01 | Stage progression (7 stages) | PASS |
+| AGENT-02 | LiteLLM fallback (Groq → Gemini) | PASS |
+| AGENT-03 | Taglish code-switching quality | PASS |
+| AGENT-04 | Persona templates (3 industries) | PASS |
+| AGENT-05 | Escalation alert < 5s | PASS |
+| DEMO-01 | WebSocket health + UUID validation | PASS |
+| DEMO-02 | Split-screen UI 50/50 | PASS |
+| DEMO-03 | Conversation persistence on reload | PASS |
+| NPC 2024-04 | AI disclosure before data collection | PASS |
 
-**Overall:** __ / 9 pass
+**Overall:** 9 / 9 pass
 
-**Tester:** ___________________________  **Date:** ___________________________
+**Tester:** Developer (getatchris@gmail.com)  **Date:** 2026-06-15
