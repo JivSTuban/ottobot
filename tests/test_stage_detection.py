@@ -21,9 +21,23 @@ def test_detect_stage_structured_is_coroutine():
     assert inspect.iscoroutinefunction(detect_stage_structured)
 
 
-def test_stage_detection_fallback_on_exhaustion(monkeypatch):
+@pytest.mark.asyncio
+async def test_stage_detection_fallback_on_exhaustion(monkeypatch):
     """On 3-attempt exhaustion, returns StageDetectionOutput with current_stage and confidence=0.0."""
-    pytest.fail("Pending: agent/stage_detection.py not yet implemented")
+    import agent.stage_detection as sd
+    # Force json-mode path by removing patched_router
+    monkeypatch.setattr(sd, "patched_router", None)
+
+    # Make router.acompletion always raise
+    from unittest.mock import AsyncMock
+    monkeypatch.setattr(sd.router, "acompletion", AsyncMock(side_effect=Exception("fail")))
+
+    result = await sd.detect_stage_structured([], "qualify")
+    from agent.models import StageDetectionOutput
+    assert isinstance(result, StageDetectionOutput)
+    assert result.next_stage == "qualify"
+    assert result.confidence == 0.0
+    assert result.reasoning == "fallback"
 
 
 def test_stage_detection_module_imports():
