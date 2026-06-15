@@ -36,7 +36,7 @@ Build an AI outbound sales agent that speaks Tagalog/Taglish and books appointme
 - [x] 01-03-PLAN.md — Agent core: state, models, Jinja2 personas, LiteLLM Router, escalation scorer
 - [x] 01-04-PLAN.md — LangGraph StateGraph builder, route_next_stage, stage detection
 - [x] 01-05-PLAN.md — FastAPI WebSocket + AsyncPostgresSaver lifespan + online guardrails
-- [ ] 01-06-PLAN.md — Vite/React split-screen UI (IndustrySelector, LeadChat, OwnerPanel, useWebSocket)
+- [x] 01-06-PLAN.md — Vite/React split-screen UI (IndustrySelector, LeadChat, OwnerPanel, useWebSocket)
 - [ ] 01-07-PLAN.md — End-to-end dev script + README + manual demo checklist sign-off
 
 ### Phase 2: Appointment Reconciler
@@ -125,7 +125,7 @@ Build an AI outbound sales agent that speaks Tagalog/Taglish and books appointme
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Agent Core & Demo UI | 5/7 | In Progress|  |
+| 1. Agent Core & Demo UI | 6/7 | In Progress|  |
 | 2. Appointment Reconciler | 0/TBD | Not started | - |
 | 3. Escalation Flow | 0/TBD | Not started | - |
 | 4. Real Channels | 0/TBD | Not started | - |
