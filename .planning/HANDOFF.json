@@ -1,0 +1,63 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-06-15T04:23:36.014Z",
+  "phase": "01",
+  "phase_name": "agent-core-demo-ui",
+  "phase_dir": ".planning/phases/01-agent-core-demo-ui",
+  "plan": null,
+  "task": null,
+  "total_tasks": 5,
+  "status": "paused",
+  "completed_tasks": [],
+  "remaining_tasks": [
+    {"id": 1, "name": "End-to-end live demo with Taglish token streaming", "status": "not_started"},
+    {"id": 2, "name": "DEMO-03 Supabase persistence", "status": "not_started"},
+    {"id": 3, "name": "NPC AI disclosure in live LLM output", "status": "not_started"},
+    {"id": 4, "name": "Persona image rendering", "status": "not_started"},
+    {"id": 5, "name": "Escalation alert UX", "status": "not_started"}
+  ],
+  "blockers": [
+    {
+      "description": "GROQ_API_KEY, GEMINI_API_KEY, MISTRAL_API_KEY not yet filled in .env",
+      "type": "human_action",
+      "workaround": "None — required for UAT Test 1 (live LLM streaming)"
+    }
+  ],
+  "human_actions_pending": [
+    {
+      "action": "Fill GROQ_API_KEY, GEMINI_API_KEY, MISTRAL_API_KEY in .env",
+      "context": "All 3 LLM provider keys needed before running scripts/dev.sh for UAT",
+      "blocking": true
+    },
+    {
+      "action": "Run scripts/dev.sh to start dev stack",
+      "context": "Starts FastAPI backend + Vite frontend at http://localhost:5173",
+      "blocking": true
+    },
+    {
+      "action": "Run /gsd-verify-work 1 to start UAT",
+      "context": "5 tests pending — all blocked until dev stack is running with real API keys",
+      "blocking": false
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "Created Supabase project 'ottobot' (ref: rovwmhjadxsudnlvkwkl) in ap-southeast-1",
+      "rationale": "Closest region to Philippines for OttoBot",
+      "phase": "01"
+    },
+    {
+      "decision": "Applied LangGraph checkpoint schema manually via Supabase MCP",
+      "rationale": "Ensures tables exist before first app boot; AsyncPostgresSaver.setup() will detect and skip re-creation",
+      "phase": "01"
+    },
+    {
+      "decision": "SUPABASE_DB_URI uses %3F encoding for password special char '?'",
+      "rationale": "PostgreSQL URI spec requires URL-encoding of special chars in password",
+      "phase": "01"
+    }
+  ],
+  "uncommitted_files": [".gitignore", ".planning/STATE.md", ".claude/", ".planning/config.json", ".planning/phases/01-agent-core-demo-ui/01-RESEARCH.md", ".env", ".mcp.json", ".claude/settings.json", ".claude/settings.local.json"],
+  "next_action": "Fill API keys in .env (GROQ_API_KEY, GEMINI_API_KEY, MISTRAL_API_KEY), then run scripts/dev.sh",
+  "context_notes": "UAT for Phase 01 is ready to run but blocked on API keys. Backend (Supabase) is fully provisioned. SUPABASE_DB_URI is set in .env. LangGraph schema applied. Dev stack not yet started."
+}

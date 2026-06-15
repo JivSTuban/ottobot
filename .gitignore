@@ -28,3 +28,7 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+
+# Claude Code local settings (contains personal tokens)
+.claude/settings.local.json
+.mcp.json

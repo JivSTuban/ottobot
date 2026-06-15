@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(/Users/jivtuban/Desktop/ottobot/.env)",
+      "Edit(/Users/jivtuban/Desktop/ottobot/.env)"
+    ]
+  }
+}
