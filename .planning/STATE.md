@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Plan 01-07 Task 2 checkpoint:human-verify
-last_updated: "2026-06-15T10:46:00Z"
-last_activity: 2026-06-15 -- Phase 01 Plan 07 Task 1 complete (dev.sh + README.md + 01-DEMO-CHECKLIST.md); awaiting human demo sign-off at Task 2 checkpoint
+status: phase-complete
+stopped_at: None
+last_updated: "2026-06-15"
+last_activity: 2026-06-15 -- Phase 01 Plan 07 complete — developer sign-off "approved — all green" (9/9 PASS). Phase 1 agent-core-demo-ui fully complete.
 progress:
   total_phases: 7
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 7
-  completed_plans: 6
-  percent: 86
+  completed_plans: 7
+  percent: 100
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-06-11)
 
 ## Current Position
 
-Phase: 01 (agent-core-demo-ui) — EXECUTING
-Plan: 7 of 7 (Plans 01-01, 01-02, 01-03, 01-04, 01-05, 01-06 complete; 01-07 Task 1 complete, Task 2 awaiting human sign-off)
-Status: Awaiting checkpoint:human-verify (Task 2 — full demo run)
-Last activity: 2026-06-15 -- Plan 01-07 Task 1 complete: scripts/dev.sh + README.md + 01-DEMO-CHECKLIST.md committed (1bcf400). Task 2 checkpoint requires developer to run full demo checklist and report pass/fail for all AGENT-NN/DEMO-NN requirements.
+Phase: 01 (agent-core-demo-ui) — COMPLETE
+Plan: 7 of 7 (All plans complete — 01-01 through 01-07)
+Status: Phase 1 complete — developer sign-off received 2026-06-15 ("approved — all green", 9/9 PASS)
+Last activity: 2026-06-15 -- Plan 01-07 Task 2 human verify complete: all AGENT-NN (01-05) and DEMO-NN (01-03) items verified PASS. NPC 2024-04 AI disclosure verified. Checklist committed (6641570). Phase 1 done.
 
-Progress: [████████░░░░░░░░░░░░] 40%
+Progress: [████████████████████] 100%
 
 ## Accumulated Context
 
@@ -87,9 +87,10 @@ None yet.
 - dev.sh sources .venv/bin/activate rather than echoing .env — T-07-01 mitigation (secrets not leaked to terminal log)
 - PIDs collected into array; cleanup() iterates and kills all on SIGINT/SIGTERM/EXIT — T-07-03 mitigation (no orphan processes)
 - Checklist uses explicit Result: __ pass / __ fail / __ blocked lines — T-07-02 mitigation (no silent skip)
+- Human sign-off captured as "approved — all green" — 9/9 checklist items PASS, Phase 1 closed
 
 ## Session Continuity
 
-Last session: 2026-06-15T10:46:00Z
-Stopped at: Plan 01-07 Task 2 — checkpoint:human-verify (blocking)
-Resume file: .planning/phases/01-agent-core-demo-ui/01-07-SUMMARY.md
+Last session: 2026-06-15
+Stopped at: None — Phase 1 complete
+Resume file: None — Phase 1 fully closed. Next: /gsd-plan-phase for Phase 2.

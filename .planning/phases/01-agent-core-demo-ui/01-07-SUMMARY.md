@@ -36,23 +36,23 @@ key-decisions:
   - "PIDs collected into PIDS array; cleanup() iterates and kills all on EXIT/SIGINT/SIGTERM — T-07-03 mitigation"
   - "Checklist uses explicit Result: __ pass / __ fail / __ blocked lines — T-07-02 (no silent skip)"
 
-requirements-completed: []
+requirements-completed: [AGENT-01, AGENT-02, AGENT-03, AGENT-04, AGENT-05, DEMO-01, DEMO-02, DEMO-03]
 
-duration: ~15m
+duration: ~30m (Task 1 automated + Task 2 human demo)
 completed: "2026-06-15"
 ---
 
 # Phase 01 Plan 07: Integration Bootstrap + Demo Checklist Summary
 
-**Single-command dev bootstrap (scripts/dev.sh), quickstart README, and a manual demo checklist covering all 8 Phase 1 requirement IDs — ready for human sign-off at Task 2 checkpoint**
+**Single-command dev bootstrap (scripts/dev.sh), quickstart README, and full 9-item demo checklist verified live — developer sign-off received 2026-06-15, all green (9/9 PASS). Phase 1 complete.**
 
 ## Performance
 
-- **Duration:** ~15 minutes
+- **Duration:** ~30 minutes (Task 1 automated + Task 2 human demo)
 - **Started:** 2026-06-15T10:31Z
-- **Completed (Task 1):** 2026-06-15T10:46Z
-- **Tasks:** 1 of 2 complete (Task 2 is a human-verify checkpoint)
-- **Files created:** 3
+- **Completed:** 2026-06-15
+- **Tasks:** 2 of 2 complete
+- **Files created:** 3 (scripts/dev.sh, README.md, 01-DEMO-CHECKLIST.md)
 
 ## Accomplishments
 
@@ -63,6 +63,7 @@ completed: "2026-06-15"
 ## Task Commits
 
 1. **Task 1: dev.sh + README.md + demo checklist** — `1bcf400`
+2. **Task 2: demo checklist updated with all PASS results** — `6641570`
 
 ## Verification Results
 
@@ -72,9 +73,21 @@ Task 1 automated checks passed:
 - `grep -c '/ws/{thread_id}' README.md` → 3 ✓
 - `grep -cE 'AGENT-0[1-5]|DEMO-0[1-3]' 01-DEMO-CHECKLIST.md` → 24 (≥8) ✓
 
-## Checkpoint Status
+Task 2 human demo results — developer sign-off "approved — all green":
 
-**Task 2 is a `checkpoint:human-verify` (gate=blocking).** The agent must run the full demo checklist after populating `.env` with real API keys and starting `scripts/dev.sh`. See checkpoint message for exact steps.
+| Requirement | Description | Result |
+|-------------|-------------|--------|
+| AGENT-01 | Stage progression (7 stages) | PASS |
+| AGENT-02 | LiteLLM fallback (Groq → Gemini) | PASS |
+| AGENT-03 | Taglish code-switching quality | PASS |
+| AGENT-04 | Persona templates (3 industries) | PASS |
+| AGENT-05 | Escalation alert < 5s | PASS |
+| DEMO-01 | WebSocket health + UUID validation | PASS |
+| DEMO-02 | Split-screen UI 50/50 | PASS |
+| DEMO-03 | Conversation persistence on reload | PASS |
+| NPC 2024-04 | AI disclosure before data collection | PASS |
+
+**Overall: 9/9 PASS** — signed off by developer on 2026-06-15.
 
 ## Deviations from Plan
 
@@ -98,7 +111,8 @@ None in the files created by this plan. All checklist items have concrete verifi
 Files verified on disk:
 - /Users/jivtuban/Desktop/ottobot/scripts/dev.sh — FOUND (executable, contains uvicorn api.main:app)
 - /Users/jivtuban/Desktop/ottobot/README.md — FOUND (contains /ws/{thread_id})
-- /Users/jivtuban/Desktop/ottobot/.planning/phases/01-agent-core-demo-ui/01-DEMO-CHECKLIST.md — FOUND (24 AGENT/DEMO ID matches)
+- /Users/jivtuban/Desktop/ottobot/.planning/phases/01-agent-core-demo-ui/01-DEMO-CHECKLIST.md — FOUND (9/9 PASS, all checkboxes ticked)
 
 Commits verified:
 - 1bcf400 (Task 1: dev.sh + README.md + demo checklist)
+- 6641570 (Task 2: demo checklist updated with all PASS results — developer sign-off)
