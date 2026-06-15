@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Plan 01-06 complete
-last_updated: "2026-06-15T10:28:00Z"
-last_activity: 2026-06-15 -- Phase 01 Plan 06 completed (split-screen React UI + 26 tests GREEN + production build 63.56 KB gzip)
+stopped_at: Plan 01-07 Task 2 checkpoint:human-verify
+last_updated: "2026-06-15T10:46:00Z"
+last_activity: 2026-06-15 -- Phase 01 Plan 07 Task 1 complete (dev.sh + README.md + 01-DEMO-CHECKLIST.md); awaiting human demo sign-off at Task 2 checkpoint
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 7
-  completed_plans: 5
-  percent: 71
+  completed_plans: 6
+  percent: 86
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-06-11)
 ## Current Position
 
 Phase: 01 (agent-core-demo-ui) — EXECUTING
-Plan: 6 of 7 (Plans 01-01, 01-02, 01-03, 01-04, 01-05, 01-06 complete)
-Status: Executing Phase 01
-Last activity: 2026-06-15 -- Plan 01-06 complete: IndustrySelector + LeadChat + OwnerPanel + useWebSocket hook + 26 vitest tests GREEN + production build 63.56 KB gzip. DEMO-01 and DEMO-02 requirements completed.
+Plan: 7 of 7 (Plans 01-01, 01-02, 01-03, 01-04, 01-05, 01-06 complete; 01-07 Task 1 complete, Task 2 awaiting human sign-off)
+Status: Awaiting checkpoint:human-verify (Task 2 — full demo run)
+Last activity: 2026-06-15 -- Plan 01-07 Task 1 complete: scripts/dev.sh + README.md + 01-DEMO-CHECKLIST.md committed (1bcf400). Task 2 checkpoint requires developer to run full demo checklist and report pass/fail for all AGENT-NN/DEMO-NN requirements.
 
 Progress: [████████░░░░░░░░░░░░] 40%
 
@@ -82,8 +82,14 @@ None yet.
 - LeadChat onSend receives plain text (no industry); App.tsx wraps send(text, industry) — clean component prop boundary
 - WebSocket.OPEN constant added to mock class — useWebSocket.send() reads readyState === WebSocket.OPEN; mock needs the constant
 
+### Plan 01-07 Decisions
+
+- dev.sh sources .venv/bin/activate rather than echoing .env — T-07-01 mitigation (secrets not leaked to terminal log)
+- PIDs collected into array; cleanup() iterates and kills all on SIGINT/SIGTERM/EXIT — T-07-03 mitigation (no orphan processes)
+- Checklist uses explicit Result: __ pass / __ fail / __ blocked lines — T-07-02 mitigation (no silent skip)
+
 ## Session Continuity
 
-Last session: 2026-06-15T10:28:00Z
-Stopped at: Plan 01-06 complete
-Resume file: .planning/phases/01-agent-core-demo-ui/01-06-SUMMARY.md
+Last session: 2026-06-15T10:46:00Z
+Stopped at: Plan 01-07 Task 2 — checkpoint:human-verify (blocking)
+Resume file: .planning/phases/01-agent-core-demo-ui/01-07-SUMMARY.md
