@@ -33,7 +33,12 @@ def test_two_of_three_signals_escalates():
 
 
 def test_one_signal_does_not_escalate():
-    """Test 2: Only booking phrase present — 1-of-3 is not enough."""
+    """Test 2: Only booking phrase (price inquiry) present — 1-of-3 is not enough.
+
+    Uses 'magkano' (signal_1: booking phrase) but no positive sentiment and slow cadence.
+    Note: 'gusto ko mag-book' triggers both signal_1 AND signal_2 ('gusto' in sentiment list),
+    so we use 'magkano ang presyo?' which maps to signal_1 only.
+    """
     from agent.escalation import escalation_scorer
 
     import time
@@ -42,9 +47,9 @@ def test_one_signal_does_not_escalate():
     state = {
         "messages": [
             make_msg("anong oras kayo bukas?"),
-            make_msg("gusto ko mag-book"),  # signal_1 only
+            make_msg("magkano ang presyo?"),  # signal_1 only (price inquiry booking phrase)
         ],
-        "message_timestamps": [t1, t1 + 60],  # NOT fast cadence
+        "message_timestamps": [t1, t1 + 60],  # NOT fast cadence (>30s gap)
     }
     result = escalation_scorer(state)
     assert result is False
