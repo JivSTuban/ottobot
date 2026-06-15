@@ -32,7 +32,7 @@ Build an AI outbound sales agent that speaks Tagalog/Taglish and books appointme
 **Plans**: 7 plans
 
 - [x] 01-01-PLAN.md — Project scaffold (Python 3.12 venv, pyproject.toml, frontend Vite scaffold, Wave 0 test stubs, litellm_config.yaml, .env.example)
-- [ ] 01-02-PLAN.md — Generate persona + industry images via Gemini MCP and typed asset manifest
+- [x] 01-02-PLAN.md — Generate persona + industry images via Gemini MCP and typed asset manifest
 - [ ] 01-03-PLAN.md — Agent core: state, models, Jinja2 personas, LiteLLM Router, escalation scorer
 - [ ] 01-04-PLAN.md — LangGraph StateGraph builder, route_next_stage, stage detection
 - [ ] 01-05-PLAN.md — FastAPI WebSocket + AsyncPostgresSaver lifespan + online guardrails
@@ -125,7 +125,7 @@ Build an AI outbound sales agent that speaks Tagalog/Taglish and books appointme
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Agent Core & Demo UI | 1/7 | In Progress|  |
+| 1. Agent Core & Demo UI | 2/7 | In Progress|  |
 | 2. Appointment Reconciler | 0/TBD | Not started | - |
 | 3. Escalation Flow | 0/TBD | Not started | - |
 | 4. Real Channels | 0/TBD | Not started | - |
