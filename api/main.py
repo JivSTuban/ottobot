@@ -34,8 +34,8 @@ def validate_thread_id(thread_id: str) -> bool:
     Session Management, T-05-01 mitigation).
     """
     try:
-        uuid.UUID(thread_id, version=4)
-        return True
+        val = uuid.UUID(thread_id)    # parse WITHOUT version coercion
+        return val.version == 4       # explicit version check
     except (ValueError, AttributeError):
         return False
 
