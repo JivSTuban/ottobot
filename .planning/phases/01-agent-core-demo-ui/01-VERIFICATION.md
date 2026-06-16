@@ -4,6 +4,9 @@ verified: 2026-06-15T12:00:00Z
 status: human_needed
 score: 16/16 must-haves verified
 overrides_applied: 0
+gap_closure_verified: 2026-06-16T00:00:00Z
+gap_closure_status: verified
+gap_closure_score: 5/5 gap truths verified
 human_verification:
   - test: "Run the full demo end-to-end: start uvicorn api.main:app with real SUPABASE_DB_URI + LLM API keys; open frontend dev server; select Dental (Ate Ana); send a Taglish message; observe token stream in LeadChat and stage badge update in OwnerPanel"
     expected: "Tokens stream into a blinking agent bubble; stage badge advances from 'Bago' to 'Tinatasa'; after 2-3 turns escalation logic can fire and HOT LEAD alert appears with role=alert"
@@ -186,4 +189,56 @@ No automated gaps found. All 16 must-have truths are VERIFIED in the codebase. A
 ---
 
 _Verified: 2026-06-15T12:00:00Z_
+_Verifier: Claude (gsd-verifier)_
+
+---
+
+## GAP Closure Verification
+
+**Verified:** 2026-06-16T00:00:00Z
+**Gap Plan:** `.planning/phases/01-agent-core-demo-ui/01-GAP-PLAN.md`
+**Gap Summary:** `.planning/phases/01-agent-core-demo-ui/01-GAP-SUMMARY.md`
+**Test run:** `python -m pytest tests/ -q --tb=short` — **68 passed, 1 warning, 0 failures**
+
+### Gap Truth Verification
+
+| # | Gap Truth | Status | Evidence |
+|---|-----------|--------|----------|
+| 1 | `agent/graph.py` has `_compute_next_stage` helper that computes next stage and writes stage/escalated/system_alert to state | VERIFIED | Lines 117-171: `_compute_next_stage(state)` returns `(next_stage, escalated, system_alert)` tuple; called in `agent_node` at line 230; return dict at lines 232-238 includes all three keys |
+| 2 | `route_next_stage` returns only `"agent"` or `END` — no unregistered node names | VERIFIED | Lines 246-259: function reads `state["stage"]`; returns `END` if `"escalate"`, else returns `"agent"`. Path_map `{"agent": "agent", END: END}` explicit at line 268 |
+| 3 | `agent/state.py` has `system_alert: str` field in `ConversationState` | VERIFIED | Line 28: `system_alert: str  # populated by agent_node when escalated=True; consumed by ws_handler state event` |
+| 4 | `api/main.py` tries `SUPABASE_DIRECT_URL` before `SUPABASE_DB_URI` in lifespan | VERIFIED | Lines 84-87: `os.environ.get("SUPABASE_DIRECT_URL") or os.environ.get("SUPABASE_DB_URI", "")` — direct URL has priority; truncated URL logged (T-GAP-01 mitigated) |
+| 5 | `api/ws_handler.py` includes `system_alert` in `{type: "state"}` JSON payload | VERIFIED | Lines 135-142: `await websocket.send_json({"type": "state", "stage": stage, "escalated": values.get("escalated", False), "system_alert": values.get("system_alert", "")})` |
+
+**Gap Score:** 5/5 gap truths verified
+
+### Test Suite Results
+
+```
+68 passed, 1 warning in 1.29s
+```
+
+- 12 new tests in `tests/test_graph_routing.py` — all pass (routing, escalation, agent_node return dict)
+- 10 tests in `tests/test_stage_routing.py` — updated to call `_compute_next_stage` after routing logic moved; all pass
+- `tests/test_websocket.py` — fake_astream mocks updated to yield `{node_name: state_delta}` dicts; `system_alert` assertion added; all pass
+- No "wrote to unknown channel" warnings in output
+
+### Routing Architecture Verification
+
+`route_next_stage` is a pure end-check (confirmed by reading `agent/graph.py` lines 246-259):
+- Returns `"agent"` for any stage that is not `"escalate"` (loop back to single agent node)
+- Returns `END` only when `stage == "escalate"` (terminal)
+- `add_conditional_edges("agent", route_next_stage, {"agent": "agent", END: END})` at line 268 uses explicit path_map preventing silent unknown-channel routing
+
+Stage progression logic is fully inside `agent_node` via `_compute_next_stage`. Priority order confirmed matches GAP-PLAN spec: escalation_scorer first, booking phrases second, visit_count guard third, D-08 bidirectional fourth, linear progression fifth.
+
+### Deviation Notes
+
+No deviations from GAP-PLAN spec. Two pre-existing test files (`test_stage_routing.py`, `test_websocket.py`) were updated to match the new routing API — this was anticipated in the GAP-PLAN deviation section and is not a gap.
+
+### Overall GAP Closure Status
+
+**VERIFIED** — All two UAT-blocking issues are resolved in code. The overall phase status remains `human_needed` (live Supabase + LLM API keys required for UAT items 2 and 5 from the original verification).
+
+_GAP Verified: 2026-06-16T00:00:00Z_
 _Verifier: Claude (gsd-verifier)_

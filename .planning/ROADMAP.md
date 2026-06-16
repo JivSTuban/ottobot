@@ -160,7 +160,7 @@ Build an AI outbound sales agent that speaks Tagalog/Taglish and books appointme
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Agent Core & Demo UI | 7/7 | Complete   | 2026-06-15 |
+| 1. Agent Core & Demo UI | 8/8 | Complete   | 2026-06-16 |
 | 2. Appointment Reconciler | 0/TBD | Not started | - |
 | 3. Escalation Flow | 0/TBD | Not started | - |
 | 4. Real Channels | 0/TBD | Not started | - |
