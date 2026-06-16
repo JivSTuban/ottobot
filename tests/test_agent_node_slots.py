@@ -79,8 +79,8 @@ async def test_agent_node_sets_proposed_appointment_when_slots_available(monkeyp
     monkeypatch.setenv("BUSINESS_ID", "biz-001")
 
     with (
-        patch("agent.slots.get_available_slots", mock_get_slots),
-        patch("agent.slots.compute_next_slots", mock_compute),
+        patch("agent.graph.get_available_slots", mock_get_slots),
+        patch("agent.graph.compute_next_slots", mock_compute),
         patch("agent.llm.router.acompletion", mock_router),
     ):
         from agent.graph import agent_node
@@ -115,8 +115,8 @@ async def test_agent_node_reply_contains_tagalog_slot_text(monkeypatch):
     monkeypatch.setenv("BUSINESS_ID", "biz-001")
 
     with (
-        patch("agent.slots.get_available_slots", mock_get_slots),
-        patch("agent.slots.compute_next_slots", mock_compute),
+        patch("agent.graph.get_available_slots", mock_get_slots),
+        patch("agent.graph.compute_next_slots", mock_compute),
         patch("agent.llm.router.acompletion", capture_completion),
     ):
         from agent.graph import agent_node
@@ -146,8 +146,8 @@ async def test_agent_node_reply_contains_fallback_when_no_slots(monkeypatch):
     monkeypatch.setenv("BUSINESS_ID", "biz-001")
 
     with (
-        patch("agent.slots.get_available_slots", mock_get_slots),
-        patch("agent.slots.compute_next_slots", mock_compute),
+        patch("agent.graph.get_available_slots", mock_get_slots),
+        patch("agent.graph.compute_next_slots", mock_compute),
         patch("agent.llm.router.acompletion", capture_completion),
     ):
         from agent.graph import agent_node

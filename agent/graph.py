@@ -29,11 +29,14 @@ NOTE: Do NOT call llm_detect_stage from inside route_next_stage in an async cont
 surfaced as a separate node step in future iterations.
 """
 
+import os
+
 from langgraph.graph import StateGraph, END
 
 from agent.escalation import escalation_scorer, POSITIVE_SENTIMENT_PHRASES
 from agent.llm import router
 from agent.models import make_env, DEMO_PROFILES
+from agent.slots import get_available_slots, compute_next_slots, format_slot_tagalog, FALLBACK_PHRASE
 from agent.state import ConversationState
 
 # ---------------------------------------------------------------------------
@@ -204,6 +207,26 @@ async def agent_node(state: ConversationState) -> dict:
         "content": f"Current stage: {stage}. Goal: advance the conversation appropriately.",
     }
 
+    # --- Slot injection for propose_appointment stage ---
+    slot_context = ""
+    proposed_appointment_iso: str | None = None
+    if stage == "propose_appointment":
+        business_id = os.environ.get("BUSINESS_ID", "")
+        raw_rows = await get_available_slots(business_id)
+        next_slots = compute_next_slots(raw_rows)
+        if next_slots:
+            slot_lines = [format_slot_tagalog(dt) for dt in next_slots]
+            slot_context = "\n".join(slot_lines)
+            proposed_appointment_iso = next_slots[0].isoformat()
+        else:
+            slot_context = FALLBACK_PHRASE
+
+    if slot_context:
+        stage_instruction = {
+            "role": "system",
+            "content": stage_instruction["content"] + f"\n\nAvailable slots:\n{slot_context}",
+        }
+
     messages_to_send = (
         system_prefix
         + [_normalize_message(m) for m in messages[-MAX_HISTORY:]]
@@ -235,6 +258,7 @@ async def agent_node(state: ConversationState) -> dict:
         "stage": next_stage,
         "escalated": escalated,
         "system_alert": system_alert,
+        "proposed_appointment": proposed_appointment_iso,
     }
 
 

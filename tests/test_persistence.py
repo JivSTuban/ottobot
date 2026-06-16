@@ -71,7 +71,10 @@ async def test_state_resumes_after_reconnect(monkeypatch):
     thread_id = str(uuid.uuid4())
     config = {"configurable": {"thread_id": thread_id}}
 
-    with patch("agent.llm.router.acompletion", AsyncMock(return_value=mock_response)):
+    with (
+        patch("agent.llm.router.acompletion", AsyncMock(return_value=mock_response)),
+        patch("agent.graph.get_available_slots", AsyncMock(return_value=[])),
+    ):
         from agent.graph import builder
 
         checkpointer = MemorySaver()
