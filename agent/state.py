@@ -25,3 +25,4 @@ class ConversationState(TypedDict):
     escalated: bool
     visit_count: dict[str, int]  # guards bidirectional edge infinite loops (D-08)
     message_timestamps: list[float]  # supports 2-of-3 escalation cadence signal (D-09)
+    system_alert: str  # populated by agent_node when escalated=True; consumed by ws_handler state event

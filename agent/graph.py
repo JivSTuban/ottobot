@@ -7,9 +7,17 @@ In tests, compile with MemorySaver:
     from langgraph.checkpoint.memory import MemorySaver
     graph = builder.compile(checkpointer=MemorySaver())
 
-Exports: builder, agent_node, route_next_stage, jinja_env, MAX_HISTORY, BOOKING_PHRASES_FAST
+Exports: builder, agent_node, route_next_stage, _compute_next_stage, jinja_env,
+         MAX_HISTORY, BOOKING_PHRASES_FAST
 
-Stage routing priority in route_next_stage (sync — LangGraph conditional edge):
+Design: Single-node looping graph.
+  - agent_node computes next_stage via _compute_next_stage and writes it into state.
+  - route_next_stage (conditional edge) ONLY decides whether to continue ("agent") or END.
+    It returns "agent" for any stage != "escalate", and END when stage == "escalate".
+  - This avoids the LangGraph pitfall of returning unregistered node names from a
+    conditional edge (which silently routes to END and logs "wrote to unknown channel").
+
+Stage routing priority in _compute_next_stage:
   1. escalation_scorer(state)          — 2-of-3 composite signal (D-09)
   2. BOOKING_PHRASES_FAST fast rule    — explicit Taglish booking phrase in last lead msg
   3. visit_count guard                 — pitch >= 3 AND objection_handling -> propose_appointment
@@ -106,24 +114,85 @@ def _normalize_message(msg) -> dict:
 # ---------------------------------------------------------------------------
 
 
+def _compute_next_stage(state: ConversationState) -> tuple[str, bool, str]:
+    """
+    Compute next stage, escalated flag, and system_alert string.
+
+    Called by agent_node to determine state updates before returning.
+    Does NOT read from state["stage"] directly for routing — reads the current stage
+    from state to apply the priority rules.
+
+    Returns:
+        (next_stage, escalated, system_alert)
+
+    Priority:
+    1. escalation_scorer (2-of-3 signals D-09)
+    2. BOOKING_PHRASES_FAST explicit fast rule
+    3. visit_count guard (pitch >= 3 + objection_handling -> propose_appointment)
+    4. D-08 bidirectional: objection_handling + positive sentiment + pitch<3 -> pitch
+    5. Deterministic linear progression
+    """
+    current: str = state.get("stage", "intro")
+
+    # 1. Escalation scorer checks first (T-04-03 mitigation)
+    if escalation_scorer(state):
+        alert = f"Hot lead detected. Contact the lead now. Stage: {current}"
+        return "escalate", True, alert
+
+    messages: list = state.get("messages", [])
+    last_msg: str = _extract_content(messages[-1]) if messages else ""
+
+    # 2. Explicit booking phrase fast rule
+    if any(p in last_msg for p in BOOKING_PHRASES_FAST):
+        alert = f"Hot lead detected. Contact the lead now. Stage: {current}"
+        return "escalate", True, alert
+
+    vc: dict = state.get("visit_count") or {}
+
+    # 3. visit_count guard — prevents pitch <-> objection_handling infinite loop (T-04-02)
+    if vc.get("pitch", 0) >= 3 and current == "objection_handling":
+        return "propose_appointment", False, ""
+
+    # 4. D-08 bidirectional: objection_handling -> pitch on positive sentiment when vc<3
+    if (
+        current == "objection_handling"
+        and any(p in last_msg for p in POSITIVE_SENTIMENT_PHRASES)
+        and vc.get("pitch", 0) < 3
+    ):
+        return "pitch", False, ""
+
+    # 5. Default deterministic linear progression
+    next_s = _STAGE_PROGRESSION.get(current, "escalate")
+    # _STAGE_PROGRESSION["escalate"] == END (sentinel) — treat as escalate terminal
+    if next_s is END:
+        next_s = "escalate"
+        alert = f"Hot lead detected. Contact the lead now. Stage: {current}"
+        return next_s, True, alert
+    return next_s, False, ""
+
+
 async def agent_node(state: ConversationState) -> dict:
     """
-    Core agent node — calls LiteLLM Router and returns assistant reply + updated visit_count.
+    Core agent node — calls LiteLLM Router and returns assistant reply + updated stage/visit_count.
 
     Prepends persona system prompt on intro stage if no system message exists yet.
     Appends a per-turn stage instruction as the final system message.
+
+    After computing the LLM reply, calls _compute_next_stage to derive next stage
+    and writes {"stage", "escalated", "system_alert"} into the returned state dict.
+    The conditional edge (route_next_stage) only checks whether stage == "escalate"
+    to decide END or loop back to "agent".
     """
     stage: str = state.get("stage", "intro")
     industry: str = state.get("industry", "dental")  # type: ignore[arg-type]
     messages: list = state.get("messages", [])
 
     # Build prefix: persona system prompt on first turn of intro
-    system_prefix: list = []
-    existing_roles = [_extract_content(m) for m in messages]
     has_system = any(
         (m.get("role") if hasattr(m, "get") else getattr(m, "role", "")) == "system"
         for m in messages
     )
+    system_prefix: list = []
     if stage == "intro" and not has_system:
         profile = DEMO_PROFILES.get(industry, DEMO_PROFILES["dental"])
         rendered = profile.render_system_prompt(jinja_env)
@@ -154,9 +223,18 @@ async def agent_node(state: ConversationState) -> dict:
     vc = dict(state.get("visit_count") or {})
     vc[stage] = vc.get(stage, 0) + 1
 
+    # Compute next stage AFTER incrementing visit_count (vc guard depends on updated count)
+    # Pass updated vc into a temporary state snapshot for _compute_next_stage
+    state_snapshot = dict(state)
+    state_snapshot["visit_count"] = vc
+    next_stage, escalated, system_alert = _compute_next_stage(state_snapshot)  # type: ignore[arg-type]
+
     return {
         "messages": [{"role": "assistant", "content": reply}],
         "visit_count": vc,
+        "stage": next_stage,
+        "escalated": escalated,
+        "system_alert": system_alert,
     }
 
 
@@ -167,43 +245,18 @@ async def agent_node(state: ConversationState) -> dict:
 
 def route_next_stage(state: ConversationState) -> str:
     """
-    Determine next stage synchronously.
+    Pure end-check conditional edge.
 
-    Priority:
-    1. escalation_scorer (2-of-3 signals D-09)
-    2. BOOKING_PHRASES_FAST explicit fast rule
-    3. visit_count guard (pitch >= 3 + objection_handling -> propose_appointment)
-    4. D-08 bidirectional: objection_handling + positive sentiment + pitch<3 -> pitch
-    5. Deterministic linear progression
+    Returns "agent" to loop back for all non-terminal stages.
+    Returns END only when stage == "escalate" (terminal stage).
+
+    Stage progression logic lives in agent_node/_compute_next_stage.
+    This function never returns an unregistered node name — only "agent" or END.
     """
-    # 1. Escalation scorer checks first (T-04-03 mitigation)
-    if escalation_scorer(state):
-        return "escalate"
-
-    messages: list = state.get("messages", [])
-    last_msg: str = _extract_content(messages[-1]) if messages else ""
-
-    # 2. Explicit booking phrase fast rule
-    if any(p in last_msg for p in BOOKING_PHRASES_FAST):
-        return "escalate"
-
-    vc: dict = state.get("visit_count") or {}
     current: str = state.get("stage", "intro")
-
-    # 3. visit_count guard — prevents pitch <-> objection_handling infinite loop (T-04-02)
-    if vc.get("pitch", 0) >= 3 and current == "objection_handling":
-        return "propose_appointment"
-
-    # 4. D-08 bidirectional: objection_handling -> pitch on positive sentiment when vc<3
-    if (
-        current == "objection_handling"
-        and any(p in last_msg for p in POSITIVE_SENTIMENT_PHRASES)
-        and vc.get("pitch", 0) < 3
-    ):
-        return "pitch"
-
-    # 5. Default deterministic linear progression
-    return _STAGE_PROGRESSION.get(current, END)
+    if current == "escalate":
+        return END
+    return "agent"
 
 
 # ---------------------------------------------------------------------------
@@ -212,5 +265,5 @@ def route_next_stage(state: ConversationState) -> str:
 
 builder = StateGraph(ConversationState)
 builder.add_node("agent", agent_node)
-builder.add_conditional_edges("agent", route_next_stage)
+builder.add_conditional_edges("agent", route_next_stage, {"agent": "agent", END: END})
 builder.set_entry_point("agent")
