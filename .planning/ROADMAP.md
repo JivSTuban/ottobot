@@ -7,7 +7,7 @@ Build an AI outbound sales agent that speaks Tagalog/Taglish and books appointme
 ## Phases
 
 - [x] **Phase 1: Agent Core & Demo UI** — Working LangGraph agent with Tagalog conversation stages, demo split-screen UI (completed 2026-06-15)
-- [ ] **Phase 2: Appointment Reconciler** — Agent proposes time slots, business owner confirms via app, appointments stored in Supabase
+- [x] **Phase 2: Appointment Reconciler** — Agent proposes time slots, business owner confirms via app, appointments stored in Supabase (completed 2026-06-16)
 - [ ] **Phase 3: Escalation Flow** — Hot lead detection, push notification to business owner, escalation state tracking
 - [ ] **Phase 4: Real Channels** — Facebook Messenger and SMS (Semaphore PH) integration, lead source ingestion
 - [ ] **Phase 5: Business Onboarding Website** — Multi-step onboarding form, industry template selection, Supabase Auth
@@ -60,8 +60,8 @@ Build an AI outbound sales agent that speaks Tagalog/Taglish and books appointme
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 02-03-PLAN.md — LangGraph agent_node slot injection at propose_appointment stage + ws_handler confirm_appointment branch
-- [ ] 02-04-PLAN.md — OwnerPanel.tsx Appointments section UI + TypeScript types + frontend tests
+- [x] 02-03-PLAN.md — LangGraph agent_node slot injection at propose_appointment stage + ws_handler confirm_appointment branch
+- [x] 02-04-PLAN.md — OwnerPanel.tsx Appointments section UI + TypeScript types + frontend tests
 
 ### Phase 3: Escalation Flow
 
@@ -170,7 +170,7 @@ Build an AI outbound sales agent that speaks Tagalog/Taglish and books appointme
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Agent Core & Demo UI | 8/8 | Complete   | 2026-06-16 |
-| 2. Appointment Reconciler | 2/4 | In Progress|  |
+| 2. Appointment Reconciler | 4/4 | Complete    | 2026-06-16 |
 | 3. Escalation Flow | 0/TBD | Not started | - |
 | 4. Real Channels | 0/TBD | Not started | - |
 | 5. Business Onboarding Website | 0/TBD | Not started | - |

@@ -21,10 +21,10 @@
 
 ### Appointments
 
-- [ ] **APPT-01**: Business owner sets weekly availability schedule (days + hours) during onboarding
-- [ ] **APPT-02**: Agent proposes time windows from available slots; lead states preference
-- [ ] **APPT-03**: Business owner confirms or counter-proposes via app — no calendar integration required
-- [ ] **APPT-04**: Confirmed appointments stored in Supabase with lead, business, time, and status
+- [x] **APPT-01**: Business owner sets weekly availability schedule (days + hours) during onboarding
+- [x] **APPT-02**: Agent proposes time windows from available slots; lead states preference
+- [x] **APPT-03**: Business owner confirms or counter-proposes via app — no calendar integration required
+- [x] **APPT-04**: Confirmed appointments stored in Supabase with lead, business, time, and status
 
 ### Escalation
 
@@ -86,10 +86,10 @@
 | DEMO-01 | Phase 1 | Pending |
 | DEMO-02 | Phase 1 | Pending |
 | DEMO-03 | Phase 1 | Pending |
-| APPT-01 | Phase 2 | Pending |
-| APPT-02 | Phase 2 | Pending |
-| APPT-03 | Phase 2 | Pending |
-| APPT-04 | Phase 2 | Pending |
+| APPT-01 | Phase 2 | Complete |
+| APPT-02 | Phase 2 | Complete |
+| APPT-03 | Phase 2 | Complete |
+| APPT-04 | Phase 2 | Complete |
 | ESC-01 | Phase 3 | Pending |
 | ESC-02 | Phase 3 | Pending |
 | ESC-03 | Phase 3 | Pending |
@@ -110,6 +110,7 @@
 | AGY-03 | Phase 7 | Pending |
 
 **Coverage:**
+
 - v1 requirements: 30 total
 - Mapped to phases: 30
 - Unmapped: 0 ✓
