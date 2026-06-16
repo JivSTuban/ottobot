@@ -4,8 +4,8 @@ milestone: v1.0
 milestone_name: milestone
 status: completed
 stopped_at: context exhaustion at 75% (2026-06-15)
-last_updated: "2026-06-15T04:22:15.002Z"
-last_activity: "2026-06-15 -- Plan 01-07 Task 2 human verify complete: all AGENT-NN (01-05) and DEMO-NN (01-03) items verified PASS. NPC 2024-04 AI disclosure verified. Checklist committed (6641570). Phase 1 done."
+last_updated: "2026-06-16T00:00:00.000Z"
+last_activity: "2026-06-16 -- Plan 01-GAP complete: LangGraph single-node looping routing fixed, SUPABASE_DIRECT_URL fallback added, system_alert wired end-to-end. 68 tests pass. Commits 387f91c, 369c820, 1bad4c1."
 progress:
   total_phases: 8
   completed_phases: 1
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-06-11)
 
 Phase: 01 (agent-core-demo-ui) — COMPLETE
 Plan: 7 of 7 (All plans complete — 01-01 through 01-07)
-Status: Phase 1 complete — developer sign-off received 2026-06-15 ("approved — all green", 9/9 PASS)
-Last activity: 2026-06-15 -- Plan 01-07 Task 2 human verify complete: all AGENT-NN (01-05) and DEMO-NN (01-03) items verified PASS. NPC 2024-04 AI disclosure verified. Checklist committed (6641570). Phase 1 done.
+Status: Phase 1 GAP plan complete — stage routing and escalation alert fixed; 68 tests pass
+Last activity: 2026-06-16 -- Plan 01-GAP complete: LangGraph single-node looping routing fixed, SUPABASE_DIRECT_URL fallback added, system_alert wired end-to-end. 68 tests pass. Commits 387f91c, 369c820, 1bad4c1.
 
 Progress: [████████████████████] 100%
 
@@ -82,6 +82,14 @@ None yet.
 - LeadChat onSend receives plain text (no industry); App.tsx wraps send(text, industry) — clean component prop boundary
 - WebSocket.OPEN constant added to mock class — useWebSocket.send() reads readyState === WebSocket.OPEN; mock needs the constant
 
+### Plan 01-GAP Decisions
+
+- _compute_next_stage helper owns all stage routing logic; route_next_stage is pure end-check returning "agent" or END only
+- SUPABASE_DIRECT_URL tried before SUPABASE_DB_URI in lifespan to bypass pgbouncer DNS propagation lag on new projects
+- system_alert field added to ConversationState; populated by agent_node on escalation; emitted in ws_handler state event
+- add_conditional_edges explicit path_map {"agent": "agent", END: END} prevents silent unknown-channel routing
+- Pre-existing test_websocket.py mock bug fixed (fake_astream yielded tuples, not update dicts)
+
 ### Plan 01-07 Decisions
 
 - dev.sh sources .venv/bin/activate rather than echoing .env — T-07-01 mitigation (secrets not leaked to terminal log)
@@ -91,6 +99,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-15T04:22:14.999Z
-Stopped at: context exhaustion at 75% (2026-06-15)
-Resume file: None — Phase 1 fully closed. Next: /gsd-plan-phase for Phase 2.
+Last session: 2026-06-16T00:00:00.000Z
+Stopped at: Completed 01-GAP-PLAN.md — 68 tests pass, stage routing and escalation alerts fixed
+Resume file: None — GAP plan fully closed. UAT tests 2 and 5 unblocked.
