@@ -53,9 +53,13 @@ Build an AI outbound sales agent that speaks Tagalog/Taglish and books appointme
   4. Confirmed appointment record (lead, business, time, status) is readable in Supabase
 
 **Plans**: 4 plans
+**Wave 1**
 
 - [ ] 02-01-PLAN.md — agent/slots.py helper (slot math, Tagalog formatting) + ConversationState.proposed_appointment + test stubs
 - [ ] 02-02-PLAN.md — FastAPI REST endpoints (POST /availability, GET /availability/{business_id}, POST /appointments/confirm) + Supabase table creation
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 02-03-PLAN.md — LangGraph agent_node slot injection at propose_appointment stage + ws_handler confirm_appointment branch
 - [ ] 02-04-PLAN.md — OwnerPanel.tsx Appointments section UI + TypeScript types + frontend tests
 
