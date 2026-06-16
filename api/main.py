@@ -81,7 +81,14 @@ async def lifespan(app: FastAPI):
 
     from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
-    db_uri = os.environ.get("SUPABASE_DB_URI", "")
+    db_uri = (
+        os.environ.get("SUPABASE_DIRECT_URL")  # direct connection (port 5432) — bypasses pgbouncer DNS lag
+        or os.environ.get("SUPABASE_DB_URI", "")  # pooler (port 6543) — fallback
+    )
+    logger.info(
+        "Connecting to Postgres via: %s",
+        (db_uri[:40] + "…") if len(db_uri) > 40 else db_uri,
+    )
     try:
         async with AsyncPostgresSaver.from_conn_string(db_uri) as checkpointer:
             await checkpointer.setup()

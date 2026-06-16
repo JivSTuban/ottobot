@@ -130,15 +130,13 @@ async def test_token_event_emitted(monkeypatch):
     """DEMO-01/02: handle_ws sends at least one type='token' event per astream chunk."""
     import api.main as app_state
 
-    # Fake astream async generator yielding one token chunk
+    # Fake astream yields stream_mode="updates" format: {node_name: state_delta}
     async def fake_astream(initial_state, config, stream_mode):
-        chunk = SimpleNamespace(content="hello")
-        metadata = {"langgraph_node": "agent"}
-        yield chunk, metadata
+        yield {"agent": {"messages": [{"role": "assistant", "content": "hello"}]}}
 
     # Fake aget_state returns a state with stage=qualify, escalated=False
     fake_state = MagicMock()
-    fake_state.values = {"stage": "qualify", "escalated": False}
+    fake_state.values = {"stage": "qualify", "escalated": False, "system_alert": ""}
     fake_compiled = MagicMock()
     fake_compiled.astream = fake_astream
     fake_compiled.aget_state = AsyncMock(return_value=fake_state)
@@ -166,11 +164,10 @@ async def test_owner_panel_state_event_emitted(monkeypatch):
     import api.main as app_state
 
     async def fake_astream(initial_state, config, stream_mode):
-        chunk = SimpleNamespace(content="response text")
-        yield chunk, {"langgraph_node": "agent"}
+        yield {"agent": {"messages": [{"role": "assistant", "content": "response text"}]}}
 
     fake_state = MagicMock()
-    fake_state.values = {"stage": "qualify", "escalated": False}
+    fake_state.values = {"stage": "qualify", "escalated": False, "system_alert": ""}
     fake_compiled = MagicMock()
     fake_compiled.astream = fake_astream
     fake_compiled.aget_state = AsyncMock(return_value=fake_state)
@@ -186,6 +183,7 @@ async def test_owner_panel_state_event_emitted(monkeypatch):
     assert len(state_events) >= 1
     assert state_events[0]["stage"] == "qualify"
     assert state_events[0]["escalated"] is False
+    assert "system_alert" in state_events[0]
 
 
 # ---------------------------------------------------------------------------

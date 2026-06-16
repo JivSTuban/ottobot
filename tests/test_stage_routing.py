@@ -1,8 +1,10 @@
 """
-AGENT-01: LangGraph stage transition tests — GREEN (plan 01-04).
+AGENT-01: LangGraph stage transition tests — updated for GAP plan routing redesign.
 
-Tests route_next_stage (sync routing logic) and agent_node (async LLM call)
-using mocked router to avoid real API calls.
+Design change (GAP plan): route_next_stage is now a pure end-check that returns
+"agent" or END. All stage progression logic moved to _compute_next_stage (called
+by agent_node). Tests now target _compute_next_stage for stage transitions and
+route_next_stage for the end-check only.
 
 State format:
   messages: list of dicts {"role": ..., "content": ...} — _extract_content handles both
@@ -13,8 +15,9 @@ State format:
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock
+from langgraph.graph import END
 
-from agent.graph import route_next_stage
+from agent.graph import route_next_stage, _compute_next_stage
 
 
 # ---------------------------------------------------------------------------
@@ -40,33 +43,37 @@ def _make_state(
         "escalated": False,
         "visit_count": visit_count or {},
         "message_timestamps": [],
+        "system_alert": "",
     }
 
 
 # ---------------------------------------------------------------------------
-# Linear progression tests
+# Linear progression tests (now via _compute_next_stage)
 # ---------------------------------------------------------------------------
 
 
 def test_intro_to_qualify():
     """AGENT-01: intro stage transitions to qualify after lead provides name."""
     state = _make_state(stage="intro", last_content="Hi po")
-    result = route_next_stage(state)
-    assert result == "qualify"
+    next_s, escalated, _ = _compute_next_stage(state)
+    assert next_s == "qualify"
+    assert escalated is False
 
 
 def test_qualify_to_pitch():
     """AGENT-01: qualify stage transitions to pitch after lead confirms interest."""
     state = _make_state(stage="qualify", last_content="interesado ako")
-    result = route_next_stage(state)
-    assert result == "pitch"
+    next_s, escalated, _ = _compute_next_stage(state)
+    assert next_s == "pitch"
+    assert escalated is False
 
 
 def test_pitch_to_objection_handling():
     """AGENT-01: pitch stage transitions to objection_handling on price objection."""
     state = _make_state(stage="pitch", last_content="medyo mahal naman")
-    result = route_next_stage(state)
-    assert result == "objection_handling"
+    next_s, escalated, _ = _compute_next_stage(state)
+    assert next_s == "objection_handling"
+    assert escalated is False
 
 
 # ---------------------------------------------------------------------------
@@ -82,8 +89,9 @@ def test_objection_back_to_pitch():
         last_content="sige",
         visit_count={"pitch": 1},
     )
-    result = route_next_stage(state)
-    assert result == "pitch"
+    next_s, escalated, _ = _compute_next_stage(state)
+    assert next_s == "pitch"
+    assert escalated is False
 
 
 def test_visit_count_guard_breaks_loop():
@@ -94,8 +102,9 @@ def test_visit_count_guard_breaks_loop():
         last_content="sige",
         visit_count={"pitch": 3},
     )
-    result = route_next_stage(state)
-    assert result == "propose_appointment"
+    next_s, escalated, _ = _compute_next_stage(state)
+    assert next_s == "propose_appointment"
+    assert escalated is False
 
 
 # ---------------------------------------------------------------------------
@@ -110,8 +119,10 @@ def test_explicit_booking_phrase_escalates():
         stage="pitch",
         last_content="gusto ko mag-book bukas",
     )
-    result = route_next_stage(state)
-    assert result == "escalate"
+    next_s, escalated, alert = _compute_next_stage(state)
+    assert next_s == "escalate"
+    assert escalated is True
+    assert "Hot lead" in alert
 
 
 def test_escalation_scorer_overrides_progression():
@@ -131,9 +142,31 @@ def test_escalation_scorer_overrides_progression():
         "escalated": False,
         "visit_count": {},
         "message_timestamps": [now - 10, now],  # 10 seconds apart -> signal_3
+        "system_alert": "",
     }
+    next_s, escalated, alert = _compute_next_stage(state)
+    assert next_s == "escalate"
+    assert escalated is True
+
+
+# ---------------------------------------------------------------------------
+# route_next_stage end-check tests
+# ---------------------------------------------------------------------------
+
+
+def test_route_next_stage_non_terminal_returns_agent():
+    """AGENT-01 (GAP): route_next_stage returns 'agent' for non-escalate stages."""
+    for stage in ["intro", "qualify", "pitch", "objection_handling", "propose_appointment", "confirm"]:
+        state = _make_state(stage=stage)
+        result = route_next_stage(state)
+        assert result == "agent", f"Expected 'agent' for stage={stage!r}"
+
+
+def test_route_next_stage_escalate_returns_end():
+    """AGENT-01 (GAP): route_next_stage returns END when stage == 'escalate'."""
+    state = _make_state(stage="escalate")
     result = route_next_stage(state)
-    assert result == "escalate"
+    assert result is END
 
 
 # ---------------------------------------------------------------------------

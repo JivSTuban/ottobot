@@ -137,5 +137,6 @@ async def handle_ws(websocket: WebSocket, thread_id: str) -> None:
                 "type": "state",
                 "stage": stage,
                 "escalated": values.get("escalated", False),
+                "system_alert": values.get("system_alert", ""),
             }
         )
