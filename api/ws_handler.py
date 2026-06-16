@@ -9,9 +9,11 @@ Imports compiled_graph from api.main via module reference to pick up the value
 set during lifespan startup (not at import time when it is still None).
 """
 
+import os
 import time
 
 import litellm
+import psycopg
 from fastapi import WebSocket
 
 import api.main as app_state
@@ -21,10 +23,24 @@ from api.guardrails import (
     holding_message_429,
     validate_business_profile_or_fallback,
 )
+from api.main import validate_thread_id
 
 # In-memory 429 backoff tracker: thread_id -> retry-after epoch (float).
 # If the current time is before the stored epoch, the 30s hold is still active.
 _429_backoff: dict[str, float] = {}
+
+
+async def store_appointment(thread_id: str, business_id: str, confirmed_time: str) -> None:
+    """Insert a confirmed appointment row into Supabase appointments table."""
+    db_uri = os.environ.get("SUPABASE_DIRECT_URL") or os.environ.get("SUPABASE_DB_URI", "")
+    if not db_uri:
+        return  # no-op in test environments
+    async with await psycopg.AsyncConnection.connect(db_uri) as conn:
+        await conn.execute(
+            "INSERT INTO appointments (thread_id, business_id, proposed_time, status) "
+            "VALUES (%s, %s, %s::timestamptz, 'confirmed')",
+            (thread_id, business_id, confirmed_time)
+        )
 
 
 async def handle_ws(websocket: WebSocket, thread_id: str) -> None:
@@ -55,6 +71,27 @@ async def handle_ws(websocket: WebSocket, thread_id: str) -> None:
     config = {"configurable": {"thread_id": thread_id}}
 
     async for ws_message in websocket.iter_json():
+        msg_type = ws_message.get("type", "text")
+
+        if msg_type == "confirm_appointment":
+            # Owner panel confirm/counter flow — handled before LLM call (Pitfall 4)
+            raw_thread_id = ws_message.get("thread_id", "")
+            raw_business_id = ws_message.get("business_id", os.environ.get("BUSINESS_ID", ""))
+            if not validate_thread_id(raw_thread_id):
+                await websocket.send_json({"type": "error", "content": "Invalid thread_id"})
+                continue
+            action = ws_message.get("action", "confirm")
+            proposed_time = ws_message.get("proposed_time", "")
+            counter_time = ws_message.get("counter_time")
+            confirmed_time = counter_time if (action == "counter" and counter_time) else proposed_time
+            await store_appointment(raw_thread_id, raw_business_id, confirmed_time)
+            await websocket.send_json({
+                "type": "appointment_confirmed",
+                "confirmed_time": confirmed_time,
+                "thread_id": raw_thread_id,
+            })
+            continue
+
         user_text = ws_message.get("text", "").strip()
         if not user_text:
             continue
