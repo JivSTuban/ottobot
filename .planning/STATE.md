@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Plan 02-01 complete
-last_updated: "2026-06-16T13:06:09.911Z"
-last_activity: 2026-06-16 -- Plan 01 complete; advancing to Plan 02
+stopped_at: Plan 02-03 complete
+last_updated: "2026-06-16T14:30:00.000Z"
+last_activity: 2026-06-16 -- Plan 02-03 complete; agent_node slot injection + confirm_appointment WS branch
 progress:
   total_phases: 8
   completed_phases: 1
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-06-11)
 ## Current Position
 
 Phase: 02 (Appointment Reconciler) — EXECUTING
-Plan: 3 of 4
-Status: Ready to execute
-Last activity: 2026-06-16 -- Plan 01 complete; advancing to Plan 02
+Plan: 4 of 4
+Status: Ready to execute Plan 02-04
+Last activity: 2026-06-16 -- Plan 02-03 complete; slot injection + WS confirm branch delivered
 
 Progress: [████████████████████] 100%
 
@@ -104,8 +104,15 @@ None yet.
 - compute_next_slots: candidate_dt > now+2h guard (Pitfall 3); iterates today through today+6
 - proposed_appointment is scalar str|None with no Annotated reducer — last-write-wins per CONTEXT.md
 
+### Plan 02-03 Decisions
+
+- Patch agent.graph.get_available_slots (not agent.slots.get_available_slots) in tests — function imported into graph module namespace at import time
+- Rule 1 fix in test_persistence.py — ainvoke loops graph until escalate, eventually hits propose_appointment and triggers real DB call via fake URI; patch prevents it
+- msg_type check placed BEFORE user_text extraction — confirm_appointment messages must not trigger a LangGraph LLM call (Pitfall 4)
+- business_id accepted from WS message body with BUSINESS_ID env var fallback; Phase 5 adds auth-gated validation
+
 ## Session Continuity
 
-Last session: 2026-06-16T13:06:09.908Z
-Stopped at: Plan 02-01 complete
-Resume file: None — continue with Plan 02-02
+Last session: 2026-06-16T14:30:00.000Z
+Stopped at: Plan 02-03 complete
+Resume file: None — continue with Plan 02-04
