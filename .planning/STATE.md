@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
+status: executing
 stopped_at: context exhaustion at 77% (2026-06-16)
-last_updated: "2026-06-16T12:57:49.312Z"
-last_activity: "2026-06-16 -- Plan 01-GAP complete: LangGraph single-node looping routing fixed, SUPABASE_DIRECT_URL fallback added, system_alert wired end-to-end. 68 tests pass. Commits 387f91c, 369c820, 1bad4c1."
+last_updated: "2026-06-16T13:01:01Z"
+last_activity: 2026-06-16 -- Phase 02 Plan 01 complete (slots.py + state extension)
 progress:
   total_phases: 8
   completed_phases: 1
-  total_plans: 8
-  completed_plans: 8
-  percent: 13
+  total_plans: 12
+  completed_plans: 9
+  percent: 15
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-11)
 
 **Core value:** A Filipino lead receives a natural Tagalog conversation that ends in a confirmed appointment — without the business owner lifting a finger.
-**Current focus:** Phase 01 — agent-core-demo-ui
+**Current focus:** Phase 02 — Appointment Reconciler
 
 ## Current Position
 
-Phase: 01 (agent-core-demo-ui) — COMPLETE
-Plan: 7 of 7 (All plans complete — 01-01 through 01-07)
-Status: Phase 1 GAP plan complete — stage routing and escalation alert fixed; 68 tests pass
-Last activity: 2026-06-16 -- Plan 01-GAP complete: LangGraph single-node looping routing fixed, SUPABASE_DIRECT_URL fallback added, system_alert wired end-to-end. 68 tests pass. Commits 387f91c, 369c820, 1bad4c1.
+Phase: 02 (Appointment Reconciler) — EXECUTING
+Plan: 2 of 4
+Status: Executing Phase 02
+Last activity: 2026-06-16 -- Plan 01 complete; advancing to Plan 02
 
 Progress: [████████████████████] 100%
 
@@ -97,8 +97,15 @@ None yet.
 - Checklist uses explicit Result: __ pass / __ fail / __ blocked lines — T-07-02 mitigation (no silent skip)
 - Human sign-off captured as "approved — all green" — 9/9 checklist items PASS, Phase 1 closed
 
+### Plan 02-01 Decisions
+
+- asyncio_mode=auto in pytest.ini (not pyproject.toml) — no @pytest.mark.asyncio decorator needed in tests
+- get_available_slots returns [] when both SUPABASE_DIRECT_URL and SUPABASE_DB_URI are unset — graceful degradation for unit tests
+- compute_next_slots: candidate_dt > now+2h guard (Pitfall 3); iterates today through today+6
+- proposed_appointment is scalar str|None with no Annotated reducer — last-write-wins per CONTEXT.md
+
 ## Session Continuity
 
-Last session: 2026-06-16T12:36:46.409Z
-Stopped at: context exhaustion at 77% (2026-06-16)
-Resume file: None — GAP plan fully closed. UAT tests 2 and 5 unblocked.
+Last session: 2026-06-16T13:01:01Z
+Stopped at: Plan 02-01 complete
+Resume file: None — continue with Plan 02-02
