@@ -32,3 +32,4 @@ class ConversationState(TypedDict):
     message_timestamps: Annotated[list[float], _append_list]  # supports 2-of-3 escalation cadence signal (D-09)
     industry: str  # persona selection — persisted across turns (WR-01)
     system_alert: str  # populated by agent_node when escalated=True; consumed by ws_handler state event
+    proposed_appointment: str | None  # ISO 8601 datetime string of proposed slot, or None (scalar; last-write-wins)
