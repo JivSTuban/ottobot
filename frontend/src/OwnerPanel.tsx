@@ -1,11 +1,13 @@
 /**
  * OwnerPanel — right panel of the split-screen demo UI.
  *
- * Shows conversation mirror (read-only), stage badge, and escalation alert.
+ * Shows conversation mirror (read-only), stage badge, escalation alert,
+ * and Appointments section (visible when stage == propose_appointment).
  * Receives state from App.tsx via props (all driven by useWebSocket hook).
  */
 
-import type { Message, Stage } from "./types";
+import { useState } from "react";
+import type { Message, Stage, AppointmentMessage } from "./types";
 import { stageToLeadStatus } from "./types";
 import type { IndustryKey } from "./assets/personas";
 import { PERSONA_ASSETS } from "./assets/personas";
@@ -15,6 +17,12 @@ interface OwnerPanelProps {
   stage: Stage;
   escalated: boolean;
   industry: IndustryKey | null;
+  /** Present when stage == propose_appointment */
+  proposed_appointment?: string | null;
+  /** Thread ID for confirm_appointment WebSocket message */
+  thread_id?: string;
+  /** WebSocket send function from useWebSocket hook */
+  send?: (msg: string) => void;
 }
 
 /** Maps LeadStatus to human-readable Filipino badge label */
@@ -32,10 +40,38 @@ function getBadgeLabel(stage: Stage): string {
   }
 }
 
-export function OwnerPanel({ messages, stage, escalated, industry }: OwnerPanelProps) {
+export function OwnerPanel({ messages, stage, escalated, industry, proposed_appointment, thread_id, send }: OwnerPanelProps) {
   const asset = industry ? PERSONA_ASSETS[industry] : null;
   const badgeLabel = getBadgeLabel(stage);
   const leadStatus = stageToLeadStatus(stage);
+
+  const [counterTime, setCounterTime] = useState("");
+  const [showCounter, setShowCounter] = useState(false);
+
+  const handleConfirm = () => {
+    if (!send) return;
+    const msg: AppointmentMessage = {
+      type: "confirm_appointment",
+      thread_id: thread_id ?? "",
+      proposed_time: proposed_appointment ?? "",
+      action: "confirm",
+    };
+    send(JSON.stringify(msg));
+  };
+
+  const handleCounter = () => {
+    if (!counterTime.trim() || !send) return;
+    const msg: AppointmentMessage = {
+      type: "confirm_appointment",
+      thread_id: thread_id ?? "",
+      proposed_time: proposed_appointment ?? "",
+      action: "counter",
+      counter_time: counterTime.trim(),
+    };
+    send(JSON.stringify(msg));
+    setCounterTime("");
+    setShowCounter(false);
+  };
 
   return (
     <section
@@ -126,6 +162,39 @@ export function OwnerPanel({ messages, stage, escalated, industry }: OwnerPanelP
           {badgeLabel}
         </span>
       </div>
+
+      {/* Appointments section — visible only at propose_appointment stage */}
+      {stage === "propose_appointment" && proposed_appointment && (
+        <section
+          className="appointments-section"
+          aria-label="Appointments"
+          style={{ position: "relative", zIndex: 1, padding: "var(--space-md)", borderTop: "1px solid #334155" }}
+        >
+          <h3 style={{ margin: "0 0 8px", fontSize: "14px", fontWeight: 600, color: "var(--text-primary)" }}>
+            Appointment Proposal
+          </h3>
+          <p className="proposed-time" style={{ margin: "0 0 12px", fontSize: "14px", color: "var(--text-secondary)" }}>
+            {proposed_appointment}
+          </p>
+          <div className="appointment-actions" style={{ display: "flex", gap: 8 }}>
+            <button onClick={handleConfirm}>Confirm</button>
+            <button onClick={() => setShowCounter(!showCounter)}>Counter-propose</button>
+          </div>
+          {showCounter && (
+            <div className="counter-propose" style={{ marginTop: 8, display: "flex", gap: 8 }}>
+              <input
+                type="text"
+                value={counterTime}
+                onChange={(e) => setCounterTime(e.target.value)}
+                placeholder="e.g. Biyernes ng June 21 sa ika-3 ng hapon"
+                aria-label="Counter-propose time"
+                style={{ flex: 1, padding: "4px 8px", fontSize: "14px" }}
+              />
+              <button onClick={handleCounter}>Send Counter</button>
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Conversation mirror — read-only */}
       <div

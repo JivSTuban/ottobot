@@ -37,6 +37,19 @@ export interface Message {
  * - escalate -> hot
  * - default -> new
  */
+export interface AvailabilitySlot {
+  iso: string;     // ISO 8601 datetime string, e.g. "2026-06-20T14:00:00+08:00"
+  display: string; // Tagalog formatted string, e.g. "Mayroon kaming bakante sa..."
+}
+
+export interface AppointmentMessage {
+  type: "confirm_appointment";
+  thread_id: string;
+  proposed_time: string;        // ISO 8601 datetime
+  action: "confirm" | "counter";
+  counter_time?: string;        // Only present when action == "counter"
+}
+
 export function stageToLeadStatus(stage: Stage): LeadStatus {
   switch (stage) {
     case "intro":
