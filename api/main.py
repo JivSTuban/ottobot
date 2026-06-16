@@ -13,7 +13,9 @@ import os
 import uuid
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+import psycopg
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from pydantic import BaseModel
 
 from agent.graph import builder
 from api.connection_manager import ConnectionManager
@@ -24,6 +26,21 @@ logger = logging.getLogger(__name__)
 compiled_graph = None
 
 manager = ConnectionManager()
+
+
+def validate_business_id(business_id: str) -> bool:
+    """
+    Return True iff business_id is a valid UUID version 4.
+
+    T-02-04 mitigation: rejects non-UUID business_id at every endpoint that
+    accepts one, preventing spoofing or accidental cross-business data access.
+    Never log the business_id value.
+    """
+    try:
+        val = uuid.UUID(business_id)    # parse WITHOUT version coercion
+        return val.version == 4         # explicit version check
+    except (ValueError, AttributeError):
+        return False
 
 
 def validate_thread_id(thread_id: str) -> bool:
@@ -38,6 +55,64 @@ def validate_thread_id(thread_id: str) -> bool:
         return val.version == 4       # explicit version check
     except (ValueError, AttributeError):
         return False
+
+
+async def setup_appointment_tables() -> None:
+    """
+    Idempotently create business_availability and appointments tables.
+
+    Uses CREATE TABLE IF NOT EXISTS — safe to call on every startup.
+    No-ops when SUPABASE_DIRECT_URL and SUPABASE_DB_URI are both unset
+    (e.g. test environments). Never logs the db_uri value (T-02-06).
+
+    Call from lifespan after checkpointer.setup().
+    """
+    db_uri = os.environ.get("SUPABASE_DIRECT_URL") or os.environ.get("SUPABASE_DB_URI", "")
+    if not db_uri:
+        return  # graceful: no-op in test environments without DB
+    async with await psycopg.AsyncConnection.connect(db_uri) as conn:
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS business_availability (
+                id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+                business_id TEXT NOT NULL,
+                day_of_week INTEGER NOT NULL CHECK (day_of_week BETWEEN 0 AND 6),
+                start_time TIME NOT NULL,
+                end_time TIME NOT NULL,
+                UNIQUE (business_id, day_of_week, start_time)
+            )
+        """)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS appointments (
+                id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+                thread_id TEXT NOT NULL,
+                business_id TEXT NOT NULL,
+                proposed_time TIMESTAMPTZ NOT NULL,
+                status TEXT NOT NULL DEFAULT 'proposed'
+                    CHECK (status IN ('proposed', 'confirmed', 'cancelled')),
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            )
+        """)
+
+
+# ---------------------------------------------------------------------------
+# Pydantic request models
+# ---------------------------------------------------------------------------
+
+class AvailabilitySlotIn(BaseModel):
+    day_of_week: int  # 0-6
+    start_time: str   # "HH:MM"
+    end_time: str     # "HH:MM"
+
+
+class AvailabilityRequest(BaseModel):
+    business_id: str
+    slots: list[AvailabilitySlotIn]
+
+
+class ConfirmAppointmentRequest(BaseModel):
+    thread_id: str
+    business_id: str
+    proposed_time: str  # ISO 8601 datetime string
 
 
 @asynccontextmanager
@@ -92,6 +167,7 @@ async def lifespan(app: FastAPI):
     try:
         async with AsyncPostgresSaver.from_conn_string(db_uri) as checkpointer:
             await checkpointer.setup()
+            await setup_appointment_tables()
             compiled_graph = builder.compile(checkpointer=checkpointer)
             logger.info("LangGraph compiled with AsyncPostgresSaver")
             yield
@@ -118,6 +194,123 @@ app = FastAPI(lifespan=lifespan)
 async def health():
     """Health check endpoint — returns whether the graph is compiled and ready."""
     return {"ok": True, "compiled": compiled_graph is not None}
+
+
+# ---------------------------------------------------------------------------
+# Availability endpoints
+# ---------------------------------------------------------------------------
+
+@app.post("/availability")
+async def set_availability(req: AvailabilityRequest):
+    """
+    Upsert weekly availability schedule for a business.
+
+    T-02-04: validate_business_id() rejects non-UUID-v4 business_id.
+    T-02-05: parameterized %s placeholders — no SQL injection surface.
+    T-02-06: never log db_uri or business_id values.
+    """
+    if not validate_business_id(req.business_id):
+        raise HTTPException(status_code=400, detail="business_id must be a valid UUID v4")
+
+    for slot in req.slots:
+        if slot.day_of_week not in range(7):
+            raise HTTPException(status_code=400, detail="day_of_week must be between 0 and 6")
+
+    db_uri = os.environ.get("SUPABASE_DIRECT_URL") or os.environ.get("SUPABASE_DB_URI", "")
+    if not db_uri:
+        return {"status": "ok", "upserted": len(req.slots)}
+
+    async with await psycopg.AsyncConnection.connect(db_uri) as conn:
+        for slot in req.slots:
+            await conn.execute(
+                """
+                INSERT INTO business_availability (business_id, day_of_week, start_time, end_time)
+                VALUES (%s, %s, %s::time, %s::time)
+                ON CONFLICT (business_id, day_of_week, start_time)
+                DO UPDATE SET end_time = EXCLUDED.end_time
+                """,
+                (req.business_id, slot.day_of_week, slot.start_time, slot.end_time),
+            )
+
+    return {"status": "ok", "upserted": len(req.slots)}
+
+
+@app.get("/availability/{business_id}")
+async def get_availability(business_id: str):
+    """
+    Return computed available slots for the next 7 days for a given business.
+
+    T-02-04: validate_business_id() check applied.
+    T-02-05: parameterized query.
+    """
+    if not validate_business_id(business_id):
+        raise HTTPException(status_code=400, detail="business_id must be a valid UUID v4")
+
+    from agent.slots import FALLBACK_PHRASE, compute_next_slots, format_slot_tagalog
+
+    db_uri = os.environ.get("SUPABASE_DIRECT_URL") or os.environ.get("SUPABASE_DB_URI", "")
+    if not db_uri:
+        return {"slots": [], "fallback": FALLBACK_PHRASE}
+
+    async with await psycopg.AsyncConnection.connect(db_uri) as conn:
+        cursor = await conn.execute(
+            "SELECT day_of_week, start_time, end_time FROM business_availability WHERE business_id = %s",
+            (business_id,),
+        )
+        raw_rows = await cursor.fetchall()
+
+    # Convert tuple rows to dicts for compute_next_slots
+    rows = [
+        {"day_of_week": r[0], "start_time": r[1], "end_time": r[2]}
+        for r in raw_rows
+    ]
+
+    slots = compute_next_slots(rows)
+    if not slots:
+        return {"slots": [], "fallback": FALLBACK_PHRASE}
+
+    return {
+        "slots": [
+            {"iso": dt.isoformat(), "display": format_slot_tagalog(dt)}
+            for dt in slots
+        ]
+    }
+
+
+# ---------------------------------------------------------------------------
+# Appointment confirmation endpoint
+# ---------------------------------------------------------------------------
+
+@app.post("/appointments/confirm")
+async def confirm_appointment(req: ConfirmAppointmentRequest):
+    """
+    Store a confirmed appointment in Supabase.
+
+    T-02-03: validate_thread_id() UUID v4 check.
+    T-02-04: validate_business_id() UUID v4 check.
+    T-02-05: parameterized INSERT — no SQL injection surface.
+    T-02-06: never log db_uri or business_id values.
+    """
+    if not validate_thread_id(req.thread_id):
+        raise HTTPException(status_code=400, detail="thread_id must be a valid UUID v4")
+
+    if not validate_business_id(req.business_id):
+        raise HTTPException(status_code=400, detail="business_id must be a valid UUID v4")
+
+    db_uri = os.environ.get("SUPABASE_DIRECT_URL") or os.environ.get("SUPABASE_DB_URI", "")
+    if not db_uri:
+        return {"status": "confirmed", "thread_id": req.thread_id}
+
+    async with await psycopg.AsyncConnection.connect(db_uri) as conn:
+        await conn.execute(
+            """
+            INSERT INTO appointments (thread_id, business_id, proposed_time, status)
+            VALUES (%s, %s, %s::timestamptz, 'confirmed')
+            """,
+            (req.thread_id, req.business_id, req.proposed_time),
+        )
+
+    return {"status": "confirmed", "thread_id": req.thread_id}
 
 
 @app.websocket("/ws/{thread_id}")
