@@ -77,14 +77,29 @@ async def lifespan(app: FastAPI):
         logger.warning("Phoenix instrumentation unavailable — continuing without tracing: %s", exc)
 
     # --- AsyncPostgresSaver + graph compilation ---
+    from contextlib import asynccontextmanager as _acm
+
     from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
-    async with AsyncPostgresSaver.from_conn_string(
-        os.environ["SUPABASE_DB_URI"]
-    ) as checkpointer:
-        await checkpointer.setup()  # idempotent migration runner (Pitfall 2)
-        compiled_graph = builder.compile(checkpointer=checkpointer)
-        logger.info("LangGraph compiled with AsyncPostgresSaver")
+    db_uri = os.environ.get("SUPABASE_DB_URI", "")
+    try:
+        async with AsyncPostgresSaver.from_conn_string(db_uri) as checkpointer:
+            await checkpointer.setup()
+            compiled_graph = builder.compile(checkpointer=checkpointer)
+            logger.info("LangGraph compiled with AsyncPostgresSaver")
+            yield
+    except Exception as db_exc:
+        # Postgres unreachable (e.g. IPv6-only host on IPv4-only network, pooler
+        # propagation lag on a brand-new project). Fall back to InMemorySaver so
+        # the API can start; persistence tests will be blocked, not broken.
+        logger.warning(
+            "Postgres connection failed — falling back to InMemorySaver (no persistence): %s",
+            db_exc,
+        )
+        from langgraph.checkpoint.memory import MemorySaver
+
+        compiled_graph = builder.compile(checkpointer=MemorySaver())
+        logger.info("LangGraph compiled with InMemorySaver (fallback)")
         yield
     # Connection closes here; compiled_graph becomes invalid after this point.
 

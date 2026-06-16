@@ -22,7 +22,7 @@ router = Router(
         {
             "model_name": "chat",
             "litellm_params": {
-                "model": "groq/meta-llama/llama-4-maverick-17b-128e-instruct",
+                "model": "groq/meta-llama/llama-4-scout-17b-16e-instruct",
                 "api_key": os.environ.get("GROQ_API_KEY", ""),
                 "rpm": 30,
                 "tpm": 6000,  # MUST set tpm — Router uses this to pre-empt 429 (Pitfall 3)

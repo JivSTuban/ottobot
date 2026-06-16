@@ -74,20 +74,29 @@ async def handle_ws(websocket: WebSocket, thread_id: str) -> None:
         }
 
         # --- Stream tokens ---
+        # stream_mode="updates" works with LiteLLM Router (non-LangChain ChatModel).
+        # Each update is {node_name: state_delta}; we extract and send assistant messages.
         try:
-            async for chunk, metadata in app_state.compiled_graph.astream(
+            async for update in app_state.compiled_graph.astream(
                 initial_state,
                 config=config,
-                stream_mode="messages",
+                stream_mode="updates",
             ):
-                if hasattr(chunk, "content") and chunk.content:
-                    await websocket.send_json(
-                        {
-                            "type": "token",
-                            "content": chunk.content,
-                            "node": metadata.get("langgraph_node", ""),
-                        }
-                    )
+                for node_name, node_update in update.items():
+                    for msg in node_update.get("messages", []):
+                        role = (
+                            msg.get("role") if isinstance(msg, dict)
+                            else getattr(msg, "role", None)
+                            or ({"ai": "assistant"}.get(getattr(msg, "type", ""), "user"))
+                        )
+                        content = (
+                            msg.get("content") if isinstance(msg, dict)
+                            else getattr(msg, "content", "")
+                        )
+                        if role in ("assistant", "ai") and content:
+                            await websocket.send_json(
+                                {"type": "token", "content": content, "node": node_name}
+                            )
         except litellm.RateLimitError:
             _429_backoff[thread_id] = time.time() + 30
             await websocket.send_json(holding_message_429())

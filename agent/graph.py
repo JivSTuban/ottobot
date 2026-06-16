@@ -83,6 +83,24 @@ def _extract_content(msg) -> str:
     return (content or "").lower()
 
 
+def _normalize_message(msg) -> dict:
+    """
+    Strip checkpoint-restored LangChain message objects down to {role, content}.
+
+    LangChain messages (HumanMessage, AIMessage, etc.) carry extra fields like
+    additional_kwargs, response_metadata, type, and id. Mistral's API rejects
+    any extra fields. Always normalise before passing to router.acompletion.
+    """
+    if isinstance(msg, dict):
+        return {"role": msg.get("role", "user"), "content": msg.get("content", "")}
+    role = getattr(msg, "role", None)
+    if role is None:
+        # Map LangChain type attr to OpenAI role
+        _type = getattr(msg, "type", "human")
+        role = {"human": "user", "ai": "assistant", "system": "system"}.get(_type, "user")
+    return {"role": role, "content": getattr(msg, "content", "")}
+
+
 # ---------------------------------------------------------------------------
 # Graph nodes
 # ---------------------------------------------------------------------------
@@ -119,7 +137,7 @@ async def agent_node(state: ConversationState) -> dict:
 
     messages_to_send = (
         system_prefix
-        + list(messages[-MAX_HISTORY:])
+        + [_normalize_message(m) for m in messages[-MAX_HISTORY:]]
         + [stage_instruction]
     )
 
