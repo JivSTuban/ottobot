@@ -55,8 +55,8 @@ Build an AI outbound sales agent that speaks Tagalog/Taglish and books appointme
 **Plans**: 4 plans
 **Wave 1**
 
-- [ ] 02-01-PLAN.md — agent/slots.py helper (slot math, Tagalog formatting) + ConversationState.proposed_appointment + test stubs
-- [ ] 02-02-PLAN.md — FastAPI REST endpoints (POST /availability, GET /availability/{business_id}, POST /appointments/confirm) + Supabase table creation
+- [x] 02-01-PLAN.md — agent/slots.py helper (slot math, Tagalog formatting) + ConversationState.proposed_appointment + test stubs
+- [x] 02-02-PLAN.md — FastAPI REST endpoints (POST /availability, GET /availability/{business_id}, POST /appointments/confirm) + Supabase table creation
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -170,7 +170,7 @@ Build an AI outbound sales agent that speaks Tagalog/Taglish and books appointme
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Agent Core & Demo UI | 8/8 | Complete   | 2026-06-16 |
-| 2. Appointment Reconciler | 0/4 | Not started | - |
+| 2. Appointment Reconciler | 2/4 | In Progress|  |
 | 3. Escalation Flow | 0/TBD | Not started | - |
 | 4. Real Channels | 0/TBD | Not started | - |
 | 5. Business Onboarding Website | 0/TBD | Not started | - |
