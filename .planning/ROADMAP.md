@@ -52,7 +52,12 @@ Build an AI outbound sales agent that speaks Tagalog/Taglish and books appointme
   3. Business owner can confirm or counter-propose an appointment time via the app
   4. Confirmed appointment record (lead, business, time, status) is readable in Supabase
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+- [ ] 02-01-PLAN.md — agent/slots.py helper (slot math, Tagalog formatting) + ConversationState.proposed_appointment + test stubs
+- [ ] 02-02-PLAN.md — FastAPI REST endpoints (POST /availability, GET /availability/{business_id}, POST /appointments/confirm) + Supabase table creation
+- [ ] 02-03-PLAN.md — LangGraph agent_node slot injection at propose_appointment stage + ws_handler confirm_appointment branch
+- [ ] 02-04-PLAN.md — OwnerPanel.tsx Appointments section UI + TypeScript types + frontend tests
 
 ### Phase 3: Escalation Flow
 
@@ -161,7 +166,7 @@ Build an AI outbound sales agent that speaks Tagalog/Taglish and books appointme
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Agent Core & Demo UI | 8/8 | Complete   | 2026-06-16 |
-| 2. Appointment Reconciler | 0/TBD | Not started | - |
+| 2. Appointment Reconciler | 0/4 | Not started | - |
 | 3. Escalation Flow | 0/TBD | Not started | - |
 | 4. Real Channels | 0/TBD | Not started | - |
 | 5. Business Onboarding Website | 0/TBD | Not started | - |
