@@ -29,13 +29,17 @@ def load_results(path: str) -> dict:
         return json.load(f)
 
 
-def compute_pass_rate(results: dict, dimension: str) -> float:
-    """Extract pass rate for a given dimension from promptfoo results JSON."""
+def compute_pass_rate(results: dict, dimension: str) -> float | None:
+    """Extract pass rate for a given dimension from promptfoo results JSON.
+
+    Returns None when no tests match the dimension — caller must treat as FAIL
+    to prevent a missing dimension from silently reporting 100% pass (WR-03).
+    """
     # promptfoo results format: results.results[] with description and pass fields
     tests = results.get("results", [])
     dimension_tests = [t for t in tests if dimension in t.get("description", "").lower().replace(" ", "_")]
     if not dimension_tests:
-        return 1.0  # no tests for this dimension — skip
+        return None  # signal: no tests found for this dimension
     passed = sum(1 for t in dimension_tests if t.get("success", False))
     return passed / len(dimension_tests)
 
@@ -74,6 +78,11 @@ def main():
 
     for dim in CRITICAL_DIMENSIONS:
         rate = compute_pass_rate(results, dim)
+        if rate is None:
+            # No tests matched — treat as FAIL to prevent silent 100% pass (WR-03)
+            print(f"  {dim:<30} NO TESTS  [FAIL]")
+            failed_dimensions.append(dim)
+            continue
         status = "PASS" if rate >= args.min_pass_rate else "FAIL"
         print(f"  {dim:<30} {rate:.0%}  [{status}]")
         if rate < args.min_pass_rate:
