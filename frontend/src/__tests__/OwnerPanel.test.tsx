@@ -1,8 +1,8 @@
 /**
  * OwnerPanel component tests — TDD RED phase
  */
-import { describe, it, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, it, expect, vi } from "vitest";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import { OwnerPanel } from "../OwnerPanel";
 import type { Stage, Message } from "../types";
 import type { IndustryKey } from "../assets/personas";
@@ -93,5 +93,69 @@ describe("OwnerPanel — conversation mirror", () => {
     renderPanel("qualify", false, sampleMessages);
     expect(screen.getByText("Magandang araw po")).toBeTruthy();
     expect(screen.getByText("Kumusta! Ako si Ate Ana.")).toBeTruthy();
+  });
+});
+
+describe("OwnerPanel — Appointments section", () => {
+  const PROPOSED_TIME = "2026-06-20T14:00:00+08:00";
+  const THREAD_ID = "test-thread-uuid";
+
+  function renderWithAppointment(
+    stage: Stage,
+    proposed_appointment: string | null,
+    send?: (msg: string) => void
+  ) {
+    return render(
+      <OwnerPanel
+        messages={noMessages}
+        stage={stage}
+        escalated={false}
+        industry="dental"
+        proposed_appointment={proposed_appointment}
+        thread_id={THREAD_ID}
+        send={send}
+      />
+    );
+  }
+
+  it("Appointments section is hidden when stage is not propose_appointment", () => {
+    renderWithAppointment("pitch", PROPOSED_TIME);
+    expect(screen.queryByText(/Appointment Proposal/i)).toBeNull();
+  });
+
+  it("Appointments section is visible at propose_appointment stage", () => {
+    renderWithAppointment("propose_appointment", PROPOSED_TIME);
+    expect(screen.getByText(/Appointment Proposal/i)).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Confirm/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Counter-propose/i })).toBeTruthy();
+  });
+
+  it("Confirm button sends correct confirm_appointment WebSocket message", () => {
+    const mockSend = vi.fn();
+    const { container } = renderWithAppointment("propose_appointment", PROPOSED_TIME, mockSend);
+    const apptSection = container.querySelector(".appointments-section") as HTMLElement;
+    fireEvent.click(within(apptSection).getByRole("button", { name: /Confirm/i }));
+    expect(mockSend).toHaveBeenCalledOnce();
+    const parsed = JSON.parse(mockSend.mock.calls[0][0]);
+    expect(parsed.type).toBe("confirm_appointment");
+    expect(parsed.action).toBe("confirm");
+    expect(parsed.thread_id).toBe(THREAD_ID);
+    expect(parsed.proposed_time).toBe(PROPOSED_TIME);
+  });
+
+  it("Counter-propose sends counter message with counter_time", () => {
+    const mockSend = vi.fn();
+    const { container } = renderWithAppointment("propose_appointment", PROPOSED_TIME, mockSend);
+    const apptSection = container.querySelector(".appointments-section") as HTMLElement;
+    fireEvent.click(within(apptSection).getByRole("button", { name: /Counter-propose/i }));
+    fireEvent.change(within(apptSection).getByLabelText(/Counter-propose time/i), {
+      target: { value: "Biyernes ng June 21 sa ika-3 ng hapon" },
+    });
+    fireEvent.click(within(apptSection).getByRole("button", { name: /Send Counter/i }));
+    expect(mockSend).toHaveBeenCalledOnce();
+    const parsed = JSON.parse(mockSend.mock.calls[0][0]);
+    expect(parsed.type).toBe("confirm_appointment");
+    expect(parsed.action).toBe("counter");
+    expect(parsed.counter_time).toBe("Biyernes ng June 21 sa ika-3 ng hapon");
   });
 });
