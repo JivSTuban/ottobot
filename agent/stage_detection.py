@@ -71,8 +71,8 @@ async def detect_stage_structured(
     }
     full_messages = list(messages) + [sys_msg]
 
+    # Try instructor path first if available (WR-05: restructured to allow JSON-mode fallthrough)
     if patched_router is not None:
-        # instructor-patched path — structured output
         for attempt in range(_MAX_ATTEMPTS):
             try:
                 result = await patched_router.chat.completions.create(
@@ -91,26 +91,27 @@ async def detect_stage_structured(
                     _MAX_ATTEMPTS,
                     exc,
                 )
-    else:
-        # JSON-mode fallback path
-        for attempt in range(_MAX_ATTEMPTS):
-            try:
-                response = await router.acompletion(
-                    model="chat",
-                    messages=full_messages,
-                    response_format={"type": "json_object"},
-                    max_tokens=100,
-                    temperature=0.0,
-                )
-                content = response.choices[0].message.content
-                return StageDetectionOutput.model_validate_json(content)
-            except Exception as exc:
-                logger.warning(
-                    "detect_stage_structured (json-mode) attempt %d/%d failed: %s",
-                    attempt + 1,
-                    _MAX_ATTEMPTS,
-                    exc,
-                )
+        # Instructor exhausted — fall through to JSON-mode secondary fallback
+
+    # JSON-mode: primary path when instructor unavailable; secondary fallback when it fails (WR-05)
+    for attempt in range(_MAX_ATTEMPTS):
+        try:
+            response = await router.acompletion(
+                model="chat",
+                messages=full_messages,
+                response_format={"type": "json_object"},
+                max_tokens=100,
+                temperature=0.0,
+            )
+            content = response.choices[0].message.content
+            return StageDetectionOutput.model_validate_json(content)
+        except Exception as exc:
+            logger.warning(
+                "detect_stage_structured (json-mode) attempt %d/%d failed: %s",
+                attempt + 1,
+                _MAX_ATTEMPTS,
+                exc,
+            )
 
     # Exhausted all attempts
     logger.error("stage detection failed after %d attempts", _MAX_ATTEMPTS)
