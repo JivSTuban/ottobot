@@ -18,11 +18,17 @@ STAGES = Literal[
 ]
 
 
+def _append_list(existing: list, new: list) -> list:
+    """Reducer: append new timestamps to existing list rather than replace (D-09)."""
+    return (existing or []) + (new or [])
+
+
 class ConversationState(TypedDict):
     messages: Annotated[list, add_messages]
     stage: STAGES
     thread_id: str
     escalated: bool
     visit_count: dict[str, int]  # guards bidirectional edge infinite loops (D-08)
-    message_timestamps: list[float]  # supports 2-of-3 escalation cadence signal (D-09)
+    message_timestamps: Annotated[list[float], _append_list]  # supports 2-of-3 escalation cadence signal (D-09)
+    industry: str  # persona selection — persisted across turns (WR-01)
     system_alert: str  # populated by agent_node when escalated=True; consumed by ws_handler state event
