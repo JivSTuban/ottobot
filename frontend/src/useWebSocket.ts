@@ -56,8 +56,11 @@ export function useWebSocket(url: string): UseWebSocketReturn {
       setWsError(true);
     };
 
-    ws.onclose = () => {
-      // Connection closed — let error state surface if unexpected
+    ws.onclose = (event) => {
+      // Surface error on non-normal close codes (WR-04)
+      if (event.code !== 1000) {
+        setWsError(true);
+      }
     };
 
     ws.onmessage = (event: MessageEvent) => {
@@ -114,11 +117,11 @@ export function useWebSocket(url: string): UseWebSocketReturn {
     // Push user message into state immediately (optimistic)
     setMessages((prev) => [...prev, { role: "user", content: text }]);
     // Send to backend
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ text, industry }));
-    } else if (wsRef.current) {
-      // Queue the send for when the socket opens (handles early sends)
-      wsRef.current.send(JSON.stringify({ text, industry }));
+    } else {
+      // Socket not ready — surface error rather than silently drop or throw (CR-04)
+      setWsError(true);
     }
   }, []);
 
