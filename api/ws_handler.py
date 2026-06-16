@@ -44,6 +44,14 @@ async def handle_ws(websocket: WebSocket, thread_id: str) -> None:
         websocket: The accepted FastAPI WebSocket connection.
         thread_id: A uuid4 string identifying this lead's conversation thread.
     """
+    # Guard: reject connections that arrive before lifespan startup completes (CR-03)
+    if app_state.compiled_graph is None:
+        await websocket.send_json({
+            "type": "system_alert",
+            "content": "Server is still initializing. Subukan ulit mamaya.",
+        })
+        return
+
     config = {"configurable": {"thread_id": thread_id}}
 
     async for ws_message in websocket.iter_json():
@@ -99,6 +107,10 @@ async def handle_ws(websocket: WebSocket, thread_id: str) -> None:
                             )
         except litellm.RateLimitError:
             _429_backoff[thread_id] = time.time() + 30
+            # Prune expired entries to prevent unbounded growth (WR-02)
+            now = time.time()
+            for k in [k for k, v in _429_backoff.items() if v < now]:
+                del _429_backoff[k]
             await websocket.send_json(holding_message_429())
             continue
 
@@ -107,15 +119,17 @@ async def handle_ws(websocket: WebSocket, thread_id: str) -> None:
         values = final_state.values if final_state else {}
         stage = values.get("stage", "intro")
 
-        # --- Guardrail 3: AI disclosure check on intro stage first turn ---
-        if stage == "intro" and profile is not None:
-            from agent.models import make_env
+        # --- Guardrail 3: AI disclosure check on first turn (CR-05, WR-06) ---
+        # Key on message count, not post-turn stage (stage is already advanced after agent_node runs).
+        # First turn = exactly 2 messages (user + assistant) in post-turn state.
+        all_messages = values.get("messages", [])
+        is_first_turn = len(all_messages) <= 2
+        if is_first_turn and profile is not None:
+            import logging
+            from agent.graph import jinja_env  # reuse singleton — avoids per-request make_env() (WR-06)
 
-            env = make_env()
-            rendered_system = profile.render_system_prompt(env)
+            rendered_system = profile.render_system_prompt(jinja_env)
             if not check_ai_disclosure(rendered_system):
-                import logging
-
                 logging.getLogger(__name__).warning(
                     "AI disclosure missing in rendered system prompt for industry=%s — "
                     "injecting hardcoded disclosure.",
