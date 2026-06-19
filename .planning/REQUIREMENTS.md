@@ -47,9 +47,9 @@
 
 ### Mobile App
 
-- [ ] **APP-01**: Push notifications — hot lead alert, appointment booked, conversation summary
-- [ ] **APP-02**: Conversation history per lead — full chat log readable by business owner
-- [ ] **APP-03**: Pipeline dashboard — leads by status (new, in-progress, booked, escalated, closed)
+- [x] **APP-01**: Push notifications — hot lead alert, appointment booked, conversation summary
+- [x] **APP-02**: Conversation history per lead — full chat log readable by business owner
+- [x] **APP-03**: Pipeline dashboard — leads by status (new, in-progress, booked, escalated, closed)
 - [ ] **APP-04**: Agent persona management — edit name, tone, script, offers post-onboarding
 - [ ] **APP-05**: Availability calendar-lite — mark open/blocked days; no external calendar integration
 
@@ -100,9 +100,9 @@
 | ONB-02 | Phase 5 | Pending |
 | ONB-03 | Phase 5 | Pending |
 | ONB-04 | Phase 5 | Pending |
-| APP-01 | Phase 6 | Pending |
-| APP-02 | Phase 6 | Pending |
-| APP-03 | Phase 6 | Pending |
+| APP-01 | Phase 6 | Complete |
+| APP-02 | Phase 6 | Complete |
+| APP-03 | Phase 6 | Complete |
 | APP-04 | Phase 6 | Pending |
 | APP-05 | Phase 6 | Pending |
 | AGY-01 | Phase 7 | Pending |
