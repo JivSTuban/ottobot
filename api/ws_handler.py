@@ -209,7 +209,9 @@ async def handle_ws(websocket: WebSocket, thread_id: str) -> None:
                     _escalated_threads.discard(_tid)
             _escalated_threads.add(thread_id)
             lead_phone = ws_message.get("lead_phone", thread_id)
-            business_id = ws_message.get("business_id", os.environ.get("BUSINESS_ID", ""))
+            # Derive business_id from server-side graph state, not client WebSocket frame.
+            # Trusting client-supplied business_id would allow push notification misdirection.
+            business_id = values.get("business_id", os.environ.get("BUSINESS_ID", ""))
             to_email = os.environ.get("RESEND_TO_EMAIL", "")
             # Build conversation summary from last 3 messages
             all_msgs = values.get("messages", [])
