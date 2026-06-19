@@ -13,8 +13,10 @@ import os
 import uuid
 from contextlib import asynccontextmanager
 
+import jwt as pyjwt
 import psycopg
-from fastapi import FastAPI, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 
 from agent.graph import builder
@@ -26,6 +28,63 @@ logger = logging.getLogger(__name__)
 compiled_graph = None
 
 manager = ConnectionManager()
+
+# ---------------------------------------------------------------------------
+# JWT authentication (Phase 6 — mobile app endpoints)
+# ---------------------------------------------------------------------------
+
+security = HTTPBearer()
+
+
+async def get_business_id_from_token(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+) -> str:
+    """
+    Decode Supabase JWT Bearer token and resolve business_id from owner_email.
+
+    T-06-01, T-06-02, T-06-03 mitigations:
+    - business_id is NEVER trusted from request body — always derived from JWT sub
+    - JWT decoded server-side using SUPABASE_JWT_SECRET
+    - owner_email → businesses table join verifies the token owner has a business
+
+    Raises HTTPException(401) for:
+    - Missing or invalid JWT
+    - SUPABASE_JWT_SECRET not configured
+    - No business found for the token's owner_email
+    """
+    jwt_secret = os.environ.get("SUPABASE_JWT_SECRET", "")
+    if not jwt_secret:
+        raise HTTPException(status_code=401, detail="Auth not configured")
+
+    try:
+        payload = pyjwt.decode(
+            credentials.credentials,
+            jwt_secret,
+            algorithms=["HS256"],
+            options={"verify_aud": False},
+        )
+    except pyjwt.PyJWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    owner_email = payload.get("sub", "")
+    if not owner_email:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    db_uri = os.environ.get("SUPABASE_DIRECT_URL") or os.environ.get("SUPABASE_DB_URI", "")
+    if not db_uri:
+        raise HTTPException(status_code=401, detail="Business not found for this token")
+
+    async with await psycopg.AsyncConnection.connect(db_uri) as conn:
+        cursor = await conn.execute(
+            "SELECT id FROM businesses WHERE owner_email = %s LIMIT 1",
+            (owner_email,),
+        )
+        row = await cursor.fetchone()
+
+    if not row:
+        raise HTTPException(status_code=401, detail="Business not found for this token")
+
+    return str(row[0])
 
 
 def validate_business_id(business_id: str) -> bool:
@@ -204,6 +263,11 @@ class ConfirmAppointmentRequest(BaseModel):
     proposed_time: str  # ISO 8601 datetime string
 
 
+class PushTokenRequest(BaseModel):
+    expo_token: str
+    business_id: str = ""  # ignored — business_id always extracted from JWT
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
@@ -260,6 +324,7 @@ async def lifespan(app: FastAPI):
             await setup_escalation_tables()
             await setup_channel_tables()
             await setup_onboarding_tables()
+            await setup_push_token_table()
             compiled_graph = builder.compile(checkpointer=checkpointer)
             logger.info("LangGraph compiled with AsyncPostgresSaver")
             yield
@@ -775,3 +840,146 @@ async def onboarding_submit(data: OnboardingData):
         business_id = str(row[0]) if row else str(uuid.uuid4())
 
     return {"status": "ok", "business_id": business_id}
+
+
+# ---------------------------------------------------------------------------
+# Mobile app endpoints (Phase 6) — all require JWT auth
+# ---------------------------------------------------------------------------
+
+
+async def setup_push_token_table() -> None:
+    """
+    Idempotently create the business_push_tokens table for mobile push notifications.
+
+    Called from lifespan after setup_onboarding_tables().
+    No-ops when DB URI is absent (test environments).
+    """
+    db_uri = os.environ.get("SUPABASE_DIRECT_URL") or os.environ.get("SUPABASE_DB_URI", "")
+    if not db_uri:
+        return
+    async with await psycopg.AsyncConnection.connect(db_uri) as conn:
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS business_push_tokens (
+                id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+                business_id TEXT NOT NULL UNIQUE,
+                expo_token TEXT NOT NULL,
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            )
+        """)
+
+
+@app.get("/leads")
+async def get_leads(business_id: str = Depends(get_business_id_from_token)):
+    """
+    Return all leads for the authenticated business owner.
+
+    T-06-01 mitigation: business_id from JWT sub → businesses join only.
+    T-06-04 mitigation: parameterized query.
+    Returns {"leads": [...]} with status field per lead for mobile SectionList grouping.
+    """
+    if not validate_business_id(business_id):
+        raise HTTPException(status_code=400, detail="business_id must be a valid UUID v4")
+
+    db_uri = os.environ.get("SUPABASE_DIRECT_URL") or os.environ.get("SUPABASE_DB_URI", "")
+    if not db_uri:
+        return {"leads": [], "grouped": {}}
+
+    async with await psycopg.AsyncConnection.connect(db_uri) as conn:
+        cursor = await conn.execute(
+            "SELECT id, phone, status, created_at FROM leads WHERE business_id = %s ORDER BY created_at DESC",
+            (business_id,),
+        )
+        rows = await cursor.fetchall()
+
+    leads_list = [
+        {"id": str(r[0]), "phone": r[1], "status": r[2], "created_at": str(r[3])}
+        for r in rows
+    ]
+    return {"leads": leads_list}
+
+
+@app.get("/leads/{lead_id}/messages")
+async def get_lead_messages(
+    lead_id: str,
+    business_id: str = Depends(get_business_id_from_token),
+):
+    """
+    Return messages for a lead, newest-first (for FlatList inverted on mobile).
+
+    T-06-02 mitigation: lead ownership verified via leads table before fetching messages.
+    T-06-04 mitigation: parameterized queries only.
+    Returns {"messages": [...]} ordered by created_at DESC.
+
+    Note: messages table links to leads via thread_id = deterministic_thread_id(phone, business_id).
+    We resolve: lead_id → phone → thread_id → messages.
+    """
+    if not validate_thread_id(lead_id):
+        raise HTTPException(status_code=400, detail="lead_id must be a valid UUID v4")
+
+    db_uri = os.environ.get("SUPABASE_DIRECT_URL") or os.environ.get("SUPABASE_DB_URI", "")
+    if not db_uri:
+        return {"messages": []}
+
+    from api.channels import deterministic_thread_id
+
+    async with await psycopg.AsyncConnection.connect(db_uri) as conn:
+        # Ownership check: verify lead belongs to authenticated business
+        lead_cursor = await conn.execute(
+            "SELECT phone FROM leads WHERE id = %s AND business_id = %s LIMIT 1",
+            (lead_id, business_id),
+        )
+        lead_row = await lead_cursor.fetchone()
+        if not lead_row:
+            raise HTTPException(status_code=404, detail="Lead not found")
+
+        phone = lead_row[0]
+        thread_id = deterministic_thread_id(phone, business_id)
+
+        cursor = await conn.execute(
+            """
+            SELECT id, content, role, created_at
+            FROM messages
+            WHERE thread_id = %s
+            ORDER BY created_at DESC
+            """,
+            (thread_id,),
+        )
+        rows = await cursor.fetchall()
+
+    messages = [
+        {"id": str(r[0]), "content": r[1], "role": r[2], "created_at": str(r[3])}
+        for r in rows
+    ]
+    return {"messages": messages}
+
+
+@app.post("/push/send")
+async def register_push_token(
+    req: PushTokenRequest,
+    business_id: str = Depends(get_business_id_from_token),
+):
+    """
+    Register or update an Expo push token for the authenticated business.
+
+    T-06-03 mitigation: business_id from JWT only — body business_id ignored.
+    T-06-05 mitigation: expo_token format validated before storage.
+    One token per business (UPSERT on business_id).
+    """
+    if not req.expo_token.startswith("ExponentPushToken["):
+        raise HTTPException(status_code=422, detail="Invalid Expo push token format")
+
+    db_uri = os.environ.get("SUPABASE_DIRECT_URL") or os.environ.get("SUPABASE_DB_URI", "")
+    if not db_uri:
+        return {"status": "ok", "stored": False}
+
+    async with await psycopg.AsyncConnection.connect(db_uri) as conn:
+        await conn.execute(
+            """
+            INSERT INTO business_push_tokens (id, business_id, expo_token, created_at)
+            VALUES (gen_random_uuid(), %s, %s, NOW())
+            ON CONFLICT (business_id) DO UPDATE SET expo_token = EXCLUDED.expo_token, created_at = NOW()
+            """,
+            (business_id, req.expo_token),
+        )
+
+    return {"status": "ok", "stored": True}
