@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -35,7 +35,7 @@ export default function PipelineScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function fetchLeads() {
+  const fetchLeads = useCallback(async () => {
     if (!session?.access_token) return;
     setError(null);
     try {
@@ -56,7 +56,7 @@ export default function PipelineScreen() {
     } catch {
       setError('Hindi makakonekta. Tingnan ang internet mo.');
     }
-  }
+  }, [session]);
 
   async function handleRefresh() {
     setRefreshing(true);
@@ -66,7 +66,7 @@ export default function PipelineScreen() {
 
   useEffect(() => {
     fetchLeads();
-  }, [session]);
+  }, [fetchLeads]);
 
   const sections = STATUS_ORDER
     .map((status) => {

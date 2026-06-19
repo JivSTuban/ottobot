@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -31,7 +31,7 @@ export default function ConversationScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  async function fetchData() {
+  const fetchData = useCallback(async () => {
     if (!session?.access_token || !id) return;
     setError(null);
     try {
@@ -50,7 +50,11 @@ export default function ConversationScreen() {
       const json = await response.json();
       setLead(json.lead ?? null);
       // Sort descending by created_at (newest first for inverted FlatList)
-      const sorted: Message[] = (json.messages ?? []).slice().sort(
+      // Map API role field to sender field expected by MessageBubble (WR-05)
+      const sorted: Message[] = (json.messages ?? []).map((m: any) => ({
+        ...m,
+        sender: m.role === 'assistant' ? 'agent' : 'lead',
+      })).sort(
         (a: Message, b: Message) =>
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
@@ -60,11 +64,11 @@ export default function ConversationScreen() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [session, id]);
 
   useEffect(() => {
     fetchData();
-  }, [session, id]);
+  }, [fetchData]);
 
   return (
     <View style={styles.container}>

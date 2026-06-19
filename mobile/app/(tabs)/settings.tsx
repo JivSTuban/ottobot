@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -56,7 +56,7 @@ export default function SettingsScreen() {
       });
   }, [session]);
 
-  async function fetchAvailability() {
+  const fetchAvailability = useCallback(async () => {
     if (!session?.access_token || !businessId) return;
     try {
       const response = await fetch(
@@ -82,7 +82,7 @@ export default function SettingsScreen() {
     } catch {
       // Non-fatal — keep defaults
     }
-  }
+  }, [session, businessId]);
 
   function toggleDay(day_of_week: number) {
     setSlots((prev) =>
@@ -128,7 +128,7 @@ export default function SettingsScreen() {
 
   useEffect(() => {
     fetchAvailability();
-  }, [session, businessId]);
+  }, [fetchAvailability]);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
