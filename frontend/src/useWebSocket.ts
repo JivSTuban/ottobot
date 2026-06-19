@@ -28,6 +28,8 @@ export interface UseWebSocketReturn {
   /** system_alert text from the escalate state event — shown inside the OwnerPanel banner */
   escalationAlert: string | null;
   send: (text: string, industry: IndustryKey) => void;
+  /** Fire the outbound opening message — no user bubble shown in UI */
+  sendOutboundTrigger: (industry: IndustryKey) => void;
   messages: Message[];
   wsError: boolean;
 }
@@ -131,6 +133,21 @@ export function useWebSocket(url: string): UseWebSocketReturn {
     }
   }, []);
 
+  // Triggers the outbound opening message — no user bubble shown in UI.
+  // Retries once after 800ms if the socket isn't open yet (covers slow connections).
+  const sendOutboundTrigger = useCallback((industry: IndustryKey) => {
+    const payload = JSON.stringify({ text: "__start__", industry });
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(payload);
+    } else {
+      setTimeout(() => {
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+          wsRef.current.send(payload);
+        }
+      }, 800);
+    }
+  }, []);
+
   return {
     tokens,
     stage,
@@ -138,6 +155,7 @@ export function useWebSocket(url: string): UseWebSocketReturn {
     systemAlert,
     escalationAlert,
     send,
+    sendOutboundTrigger,
     messages,
     wsError,
   };

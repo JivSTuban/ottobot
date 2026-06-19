@@ -98,7 +98,8 @@ async def handle_ws(websocket: WebSocket, thread_id: str) -> None:
             continue
 
         user_text = ws_message.get("text", "").strip()
-        if not user_text:
+        is_outbound_start = user_text == "__start__"
+        if not user_text and not is_outbound_start:
             continue
 
         industry = ws_message.get("industry", "dental")
@@ -117,8 +118,19 @@ async def handle_ws(websocket: WebSocket, thread_id: str) -> None:
             continue
 
         # Build initial state for this turn; LangGraph merges with checkpointed state.
+        # Outbound start: agent fires the opening message with no prior user input.
+        if is_outbound_start:
+            trigger_text = (
+                "[OUTBOUND_START] Ipadala ang iyong unang mensahe sa prospect. "
+                "MAHALAGANG TUNTUNIN: "
+                "(1) HUWAG banggitin na ikaw ay AI o assistant — mag-introduce lang ng pangalan mo at business. "
+                "(2) Isang o dalawang pangungusap LANG — maikli, natural, at conversational. "
+                "(3) Magtanong ng isa, simple, at specific na hook na may kaugnayan sa iyong aktwal na serbisyo."
+            )
+        else:
+            trigger_text = user_text
         initial_state = {
-            "messages": [{"role": "user", "content": user_text}],
+            "messages": [{"role": "user", "content": trigger_text}],
             "industry": industry,
             "message_timestamps": [time.time()],
         }
@@ -166,7 +178,8 @@ async def handle_ws(websocket: WebSocket, thread_id: str) -> None:
         # First turn = exactly 2 messages (user + assistant) in post-turn state.
         all_messages = values.get("messages", [])
         is_first_turn = len(all_messages) <= 2
-        if is_first_turn and profile is not None:
+        # Skip forced AI disclosure on outbound start — we intentionally don't announce AI upfront.
+        if is_first_turn and not is_outbound_start and profile is not None:
             import logging
             from agent.graph import jinja_env  # reuse singleton — avoids per-request make_env() (WR-06)
 

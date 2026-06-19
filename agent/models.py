@@ -37,9 +37,9 @@ class BusinessProfile(BaseModel):
             raise ValueError("pricing must be a non-empty string")
         return v
 
-    def render_system_prompt(self, env: jinja2.Environment) -> str:
+    def render_system_prompt(self, env: jinja2.Environment, outbound_start: bool = False) -> str:
         template = env.get_template(f"{self.industry.value}.j2")
-        return template.render(**self.model_dump())
+        return template.render(**self.model_dump(), outbound_start=outbound_start)
 
 
 def make_env() -> Environment:

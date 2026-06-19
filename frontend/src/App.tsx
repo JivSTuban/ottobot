@@ -10,7 +10,7 @@
  *   - No dangerouslySetInnerHTML anywhere in this tree (T-06-02)
  */
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import type { IndustryKey } from "./assets/personas";
 import { PERSONA_ASSETS } from "./assets/personas";
 import { IndustrySelector } from "./IndustrySelector";
@@ -38,7 +38,14 @@ function App() {
   // WebSocket URL — useMemo ensures the hook only re-opens on URL change
   const wsUrl = useMemo(() => `ws://localhost:8000/ws/${threadId}`, [threadId]);
 
-  const { messages, stage, escalated, systemAlert, escalationAlert, send, wsError } = useWebSocket(wsUrl);
+  const { messages, stage, escalated, systemAlert, escalationAlert, send, sendOutboundTrigger, wsError } = useWebSocket(wsUrl);
+
+  // When the user picks an industry and clicks Simulan, Otto fires first.
+  useEffect(() => {
+    if (industry !== null) {
+      sendOutboundTrigger(industry);
+    }
+  }, [industry]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleSend(text: string) {
     if (industry) {
