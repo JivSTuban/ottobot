@@ -202,6 +202,11 @@ async def handle_ws(websocket: WebSocket, thread_id: str) -> None:
 
         # --- Escalation notification (once per thread) ---
         if is_escalated and thread_id not in _escalated_threads:
+            # Evict oldest half when set exceeds 10 000 entries to prevent unbounded growth
+            if len(_escalated_threads) >= 10000:
+                to_remove = list(_escalated_threads)[:5000]
+                for _tid in to_remove:
+                    _escalated_threads.discard(_tid)
             _escalated_threads.add(thread_id)
             lead_phone = ws_message.get("lead_phone", thread_id)
             business_id = ws_message.get("business_id", os.environ.get("BUSINESS_ID", ""))
