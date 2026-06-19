@@ -66,7 +66,9 @@ async def get_business_id_from_token(
     except pyjwt.PyJWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-    owner_email = payload.get("sub", "")
+    # Supabase JWTs carry the user email in the "email" claim; "sub" is the auth UUID.
+    # Fallback to "sub" is intentional for custom tokens where "email" may be absent.
+    owner_email = payload.get("email", "") or payload.get("sub", "")
     if not owner_email:
         raise HTTPException(status_code=401, detail="Invalid token")
 
