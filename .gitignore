@@ -20,6 +20,10 @@ htmlcov/
 node_modules/
 frontend/dist/
 
+# Mobile
+mobile/.env
+mobile/node_modules/
+
 # OS
 .DS_Store
 Thumbs.db
