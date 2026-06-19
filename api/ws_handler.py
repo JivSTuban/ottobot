@@ -18,7 +18,7 @@ from fastapi import WebSocket
 
 import api.main as app_state
 from agent.models import DEMO_PROFILES
-from api.escalation_service import send_escalation_email, store_escalation
+from api.escalation_service import send_escalation_email, send_push_notification, store_escalation
 from api.guardrails import (
     check_ai_disclosure,
     holding_message_429,
@@ -218,3 +218,25 @@ async def handle_ws(websocket: WebSocket, thread_id: str) -> None:
             await store_escalation(thread_id, business_id, lead_phone, conversation_summary)
             if to_email:
                 await send_escalation_email(to_email, lead_phone, conversation_summary)
+            # --- Push notification (APP-01) ---
+            try:
+                push_db_uri = os.environ.get("SUPABASE_DIRECT_URL") or os.environ.get("SUPABASE_DB_URI", "")
+                expo_token = ""
+                if push_db_uri:
+                    async with await psycopg.AsyncConnection.connect(push_db_uri) as conn:
+                        cursor = await conn.execute(
+                            "SELECT expo_token FROM business_push_tokens WHERE business_id = %s LIMIT 1",
+                            (business_id,),
+                        )
+                        row = await cursor.fetchone()
+                        if row:
+                            expo_token = row[0]
+                await send_push_notification(
+                    expo_token,
+                    "Hot lead — tumawag na!",
+                    lead_phone + " ay handa nang mag-book. Tawagan siya ngayon.",
+                    {"leadId": thread_id},
+                )
+            except Exception as e:
+                import logging as _logging
+                _logging.getLogger(__name__).warning("Push notification failed: %s", e)
