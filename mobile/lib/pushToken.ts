@@ -21,6 +21,10 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
 
   // projectId comes from app.json extra.eas.projectId — NOT hardcoded
   const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+  if (!projectId) {
+    console.warn('EAS projectId not configured — push token registration skipped');
+    return null;
+  }
   const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
 
   if (Platform.OS === 'android') {
