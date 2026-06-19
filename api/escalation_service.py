@@ -17,6 +17,46 @@ import psycopg
 logger = logging.getLogger(__name__)
 
 RESEND_API_URL = "https://api.resend.com/emails"
+EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send"
+
+
+async def send_push_notification(
+    expo_token: str,
+    title: str,
+    body: str,
+    data: dict | None = None,
+) -> None:
+    """
+    Send a push notification via the Expo Push HTTP API.
+
+    No-ops if expo_token is empty (graceful degradation when device has not
+    registered a push token). Push failure never crashes the escalation flow.
+    No Authorization header — Expo identifies the target device via the "to" field.
+    """
+    if not expo_token:
+        return
+
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        try:
+            resp = await client.post(
+                EXPO_PUSH_URL,
+                headers={
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                },
+                json={
+                    "to": expo_token,
+                    "title": title,
+                    "body": body,
+                    "data": data or {},
+                    "sound": "default",
+                    "channelId": "default",
+                },
+            )
+            if resp.status_code >= 400:
+                logger.warning("Expo Push API returned %s", resp.status_code)
+        except httpx.RequestError as exc:
+            logger.warning("Expo Push API request failed: %s", type(exc).__name__)
 
 
 async def send_escalation_email(
