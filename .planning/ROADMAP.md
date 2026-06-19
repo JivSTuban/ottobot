@@ -115,14 +115,15 @@ Build an AI outbound sales agent that speaks Tagalog/Taglish and books appointme
 
 **Goal**: Business owners can monitor lead activity, read conversation history, manage their agent persona, and set availability — all from a mobile app with push notifications.
 **Depends on**: Phase 3, Phase 5
-**Requirements**: APP-01, APP-02, APP-03, APP-04, APP-05
+**Requirements**: APP-01, APP-02, APP-03, APP-05
 **Success Criteria** (what must be TRUE):
 
   1. Business owner receives push notifications for hot leads, booked appointments, and conversation summaries
   2. Business owner can read the full chat log for any lead
   3. Pipeline dashboard shows all leads grouped by status (new, in-progress, booked, escalated, closed)
-  4. Business owner can edit agent name, tone, script, and offers post-onboarding
-  5. Business owner can mark days as open or blocked; changes update available slots immediately
+  4. Business owner can mark days as open or blocked; changes update available slots immediately
+
+**Deferred to Phase 7**: APP-04 (agent persona editing in mobile) — per POLICY.md, persona editing is not implemented in Phase 6 mobile app.
 
 **Plans**: TBD
 
