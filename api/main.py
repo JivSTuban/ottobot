@@ -14,7 +14,7 @@ import uuid
 from contextlib import asynccontextmanager
 
 import psycopg
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 
 from agent.graph import builder
@@ -55,6 +55,95 @@ def validate_thread_id(thread_id: str) -> bool:
         return val.version == 4       # explicit version check
     except (ValueError, AttributeError):
         return False
+
+
+async def setup_escalation_tables() -> None:
+    """
+    Idempotently create the escalations table.
+
+    Called from lifespan after setup_appointment_tables().
+    No-ops when DB URI is absent (test environments).
+    """
+    db_uri = os.environ.get("SUPABASE_DIRECT_URL") or os.environ.get("SUPABASE_DB_URI", "")
+    if not db_uri:
+        return
+    async with await psycopg.AsyncConnection.connect(db_uri) as conn:
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS escalations (
+                id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+                thread_id TEXT NOT NULL,
+                business_id TEXT NOT NULL,
+                lead_phone TEXT NOT NULL DEFAULT '',
+                conversation_summary TEXT NOT NULL DEFAULT '',
+                triggered_at TIMESTAMPTZ DEFAULT NOW(),
+                outcome TEXT NOT NULL DEFAULT 'not_called'
+                    CHECK (outcome IN ('called', 'not_called', 'ignored')),
+                UNIQUE (thread_id)
+            )
+        """)
+
+
+async def setup_onboarding_tables() -> None:
+    """
+    Idempotently create the businesses table for onboarding.
+
+    Called from lifespan after setup_channel_tables().
+    No-ops when DB URI is absent (test environments).
+    """
+    db_uri = os.environ.get("SUPABASE_DIRECT_URL") or os.environ.get("SUPABASE_DB_URI", "")
+    if not db_uri:
+        return
+    async with await psycopg.AsyncConnection.connect(db_uri) as conn:
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS businesses (
+                id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+                owner_email TEXT NOT NULL,
+                name TEXT NOT NULL,
+                industry TEXT NOT NULL CHECK (industry IN ('dental', 'aesthetics', 'real_estate')),
+                phone TEXT NOT NULL DEFAULT '',
+                city TEXT NOT NULL DEFAULT '',
+                services TEXT NOT NULL DEFAULT '',
+                pricing TEXT NOT NULL DEFAULT '',
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                UNIQUE (owner_email)
+            )
+        """)
+
+
+async def setup_channel_tables() -> None:
+    """
+    Idempotently create leads and messages tables for real channel ingestion.
+
+    Called from lifespan after setup_escalation_tables().
+    No-ops when DB URI is absent (test environments).
+    """
+    db_uri = os.environ.get("SUPABASE_DIRECT_URL") or os.environ.get("SUPABASE_DB_URI", "")
+    if not db_uri:
+        return
+    async with await psycopg.AsyncConnection.connect(db_uri) as conn:
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS leads (
+                id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+                phone TEXT NOT NULL,
+                name TEXT NOT NULL DEFAULT '',
+                source TEXT NOT NULL DEFAULT 'unknown'
+                    CHECK (source IN ('csv_upload', 'lead_form', 'sms_inbound', 'fb_messenger', 'unknown')),
+                business_id TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'new'
+                    CHECK (status IN ('new', 'in_progress', 'booked', 'escalated', 'closed')),
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                UNIQUE (phone, business_id)
+            )
+        """)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS messages (
+                id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+                thread_id TEXT NOT NULL,
+                role TEXT NOT NULL CHECK (role IN ('user', 'assistant', 'system')),
+                content TEXT NOT NULL,
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            )
+        """)
 
 
 async def setup_appointment_tables() -> None:
@@ -168,6 +257,9 @@ async def lifespan(app: FastAPI):
         async with AsyncPostgresSaver.from_conn_string(db_uri) as checkpointer:
             await checkpointer.setup()
             await setup_appointment_tables()
+            await setup_escalation_tables()
+            await setup_channel_tables()
+            await setup_onboarding_tables()
             compiled_graph = builder.compile(checkpointer=checkpointer)
             logger.info("LangGraph compiled with AsyncPostgresSaver")
             yield
@@ -334,3 +426,352 @@ async def websocket_endpoint(websocket: WebSocket, thread_id: str):
         pass
     finally:
         manager.disconnect(websocket)
+
+
+# ---------------------------------------------------------------------------
+# Channel processing helper (shared by SMS + Facebook webhooks)
+# ---------------------------------------------------------------------------
+
+
+async def process_channel_message(
+    thread_id: str,
+    user_text: str,
+    industry: str,
+    business_id: str,
+) -> str:
+    """
+    Run the LangGraph agent for a single channel message and return the reply text.
+
+    Used by SMS and Facebook webhooks — shares the same compiled_graph as the
+    WebSocket handler. Returns empty string if graph is not yet compiled.
+
+    Thread ID should be deterministic_thread_id(phone, business_id) for real channels.
+    """
+    if compiled_graph is None:
+        return ""
+
+    config = {"configurable": {"thread_id": thread_id}}
+    initial_state = {
+        "messages": [{"role": "user", "content": user_text}],
+        "industry": industry,
+        "message_timestamps": [],
+    }
+
+    import time as _time
+    initial_state["message_timestamps"] = [_time.time()]
+
+    reply_parts: list[str] = []
+    async for update in compiled_graph.astream(initial_state, config=config, stream_mode="updates"):
+        for _node, node_update in update.items():
+            for msg in node_update.get("messages", []):
+                role = (
+                    msg.get("role") if isinstance(msg, dict) else getattr(msg, "role", None)
+                    or ({"ai": "assistant"}.get(getattr(msg, "type", ""), "user"))
+                )
+                content = (
+                    msg.get("content") if isinstance(msg, dict) else getattr(msg, "content", "")
+                )
+                if role in ("assistant", "ai") and content:
+                    reply_parts.append(content)
+
+    return " ".join(reply_parts)
+
+
+# ---------------------------------------------------------------------------
+# SMS webhook (Semaphore PH)
+# ---------------------------------------------------------------------------
+
+
+class SmsWebhookRequest(BaseModel):
+    message: str
+    senderNumber: str
+    receiverNumber: str = ""
+    network: str = ""
+
+
+@app.post("/webhook/sms")
+async def sms_webhook(req: SmsWebhookRequest):
+    """
+    Receive inbound SMS from Semaphore PH webhook.
+
+    Semaphore posts fields: message, senderNumber, receiverNumber, network.
+    The sender's phone number is used to derive a deterministic thread_id.
+    Business is identified by BUSINESS_ID env var (Phase 5 will auth-gate this).
+    """
+    from api.channels import deterministic_thread_id, send_sms
+
+    business_id = os.environ.get("BUSINESS_ID", "")
+    industry = os.environ.get("DEFAULT_INDUSTRY", "dental")
+    thread_id = deterministic_thread_id(req.senderNumber, business_id)
+
+    reply = await process_channel_message(thread_id, req.message, industry, business_id)
+    if reply:
+        await send_sms(req.senderNumber, reply)
+
+    return {"status": "ok", "thread_id": thread_id}
+
+
+# ---------------------------------------------------------------------------
+# Facebook Messenger webhook
+# ---------------------------------------------------------------------------
+
+
+@app.get("/webhook/facebook")
+async def facebook_webhook_verify(
+    hub_mode: str = "",
+    hub_challenge: str = "",
+    hub_verify_token: str = "",
+):
+    """
+    Meta webhook verification (GET). Returns hub.challenge when verify token matches.
+
+    Query param names contain dots — FastAPI maps them to underscore params.
+    """
+    verify_token = os.environ.get("FACEBOOK_VERIFY_TOKEN", "")
+    if hub_mode == "subscribe" and hub_challenge and hub_verify_token == verify_token:
+        return int(hub_challenge)
+    raise HTTPException(status_code=403, detail="Verification failed")
+
+
+@app.post("/webhook/facebook")
+async def facebook_webhook(payload: dict):
+    """
+    Receive Facebook Messenger messages from Meta webhook.
+
+    Iterates entries and messaging objects, routes each to the agent, replies via Graph API.
+    """
+    from api.channels import deterministic_thread_id, send_facebook_message
+
+    business_id = os.environ.get("BUSINESS_ID", "")
+    industry = os.environ.get("DEFAULT_INDUSTRY", "dental")
+
+    for entry in payload.get("entry", []):
+        for event in entry.get("messaging", []):
+            sender_id: str = event.get("sender", {}).get("id", "")
+            message_obj = event.get("message", {})
+            text: str = message_obj.get("text", "")
+            if not sender_id or not text:
+                continue
+
+            thread_id = deterministic_thread_id(f"fb:{sender_id}", business_id)
+            reply = await process_channel_message(thread_id, text, industry, business_id)
+            if reply:
+                await send_facebook_message(sender_id, reply)
+
+    return {"status": "ok"}
+
+
+# ---------------------------------------------------------------------------
+# Lead ingestion — CSV upload + Meta Lead Ads webhook
+# ---------------------------------------------------------------------------
+
+
+@app.post("/leads/upload")
+async def upload_leads(
+    business_id: str,
+    file: UploadFile,
+):
+    """
+    Accept a CSV file with columns: phone (required), name (optional).
+
+    Upserts each row into the leads table and fires an outbound SMS to kick off
+    the conversation. business_id passed as query param.
+
+    T-02-04: validate_business_id() guard applied.
+    """
+    import csv
+    import io
+
+    from api.channels import deterministic_thread_id, send_sms
+
+    if not validate_business_id(business_id):
+        raise HTTPException(status_code=400, detail="business_id must be a valid UUID v4")
+
+    content = await file.read()
+    reader = csv.DictReader(io.StringIO(content.decode("utf-8")))
+
+    db_uri = os.environ.get("SUPABASE_DIRECT_URL") or os.environ.get("SUPABASE_DB_URI", "")
+    industry = os.environ.get("DEFAULT_INDUSTRY", "dental")
+
+    upserted: int = 0
+    for row in reader:
+        phone = (row.get("phone") or "").strip()
+        if not phone:
+            continue
+        name = (row.get("name") or "").strip()
+
+        if db_uri:
+            async with await psycopg.AsyncConnection.connect(db_uri) as conn:
+                await conn.execute(
+                    """
+                    INSERT INTO leads (phone, name, source, business_id, status)
+                    VALUES (%s, %s, 'csv_upload', %s, 'new')
+                    ON CONFLICT (phone, business_id) DO NOTHING
+                    """,
+                    (phone, name, business_id),
+                )
+
+        thread_id = deterministic_thread_id(phone, business_id)
+        greeting = os.environ.get(
+            "OUTBOUND_GREETING",
+            "Magandang araw po! Ako si OttoBot, tumutulong po ako para sa inyong appointment.",
+        )
+        await send_sms(phone, greeting)
+        upserted += 1
+
+    return {"status": "ok", "upserted": upserted}
+
+
+class LeadFormWebhookRequest(BaseModel):
+    """Meta Lead Ads webhook payload (simplified)."""
+    object: str = "page"
+    entry: list = []
+
+
+@app.post("/webhook/lead-form")
+async def lead_form_webhook(payload: LeadFormWebhookRequest):
+    """
+    Ingest leads from Meta Lead Ads webhook.
+
+    Expects Meta Lead Ads format: entry[].changes[].value.leads[].field_data[].
+    Upserts each lead and fires the first outbound SMS.
+    """
+    from api.channels import deterministic_thread_id, send_sms
+
+    business_id = os.environ.get("BUSINESS_ID", "")
+    industry = os.environ.get("DEFAULT_INDUSTRY", "dental")
+    db_uri = os.environ.get("SUPABASE_DIRECT_URL") or os.environ.get("SUPABASE_DB_URI", "")
+
+    ingested: int = 0
+    for entry in payload.entry:
+        for change in entry.get("changes", []):
+            value = change.get("value", {})
+            for lead in value.get("leads", []):
+                # Extract phone and name from field_data
+                field_data: list = lead.get("field_data", [])
+                fields = {f["name"]: f.get("values", [""])[0] for f in field_data}
+                phone = fields.get("phone_number", fields.get("phone", "")).strip()
+                name = fields.get("full_name", fields.get("name", "")).strip()
+                if not phone:
+                    continue
+
+                if db_uri:
+                    async with await psycopg.AsyncConnection.connect(db_uri) as conn:
+                        await conn.execute(
+                            """
+                            INSERT INTO leads (phone, name, source, business_id, status)
+                            VALUES (%s, %s, 'lead_form', %s, 'new')
+                            ON CONFLICT (phone, business_id) DO NOTHING
+                            """,
+                            (phone, name, business_id),
+                        )
+
+                thread_id = deterministic_thread_id(phone, business_id)
+                greeting = os.environ.get(
+                    "OUTBOUND_GREETING",
+                    "Magandang araw po! Ako si OttoBot, tumutulong po ako para sa inyong appointment.",
+                )
+                await send_sms(phone, greeting)
+                ingested += 1
+
+    return {"status": "ok", "ingested": ingested}
+
+
+# ---------------------------------------------------------------------------
+# Onboarding endpoints (Phase 5)
+# ---------------------------------------------------------------------------
+
+
+class OnboardingData(BaseModel):
+    owner_email: str
+    name: str
+    industry: str
+    phone: str = ""
+    city: str = ""
+    services: str = ""
+    pricing: str = ""
+    agent_name: str = ""
+
+
+@app.post("/onboarding/preview")
+async def onboarding_preview(data: OnboardingData):
+    """
+    Return a rendered persona preview using the submitted onboarding data.
+
+    Uses the same Jinja2 env as the agent (singleton jinja_env from graph.py).
+    Returns {"preview": "<rendered system prompt>"}.
+
+    Industry must be one of dental | aesthetics | real_estate.
+    """
+    from agent.graph import jinja_env
+    from agent.models import BusinessProfile, Industry
+
+    valid_industries = {i.value for i in Industry}
+    if data.industry not in valid_industries:
+        raise HTTPException(
+            status_code=400,
+            detail=f"industry must be one of: {', '.join(valid_industries)}",
+        )
+
+    services_list = [s.strip() for s in data.services.split(",") if s.strip()] or ["service"]
+    agent_name = data.agent_name or f"Ate {data.name.split()[0]}" if data.name else "Ate Ana"
+
+    profile = BusinessProfile(
+        agent_name=agent_name,
+        business_name=data.name or "My Business",
+        industry=Industry(data.industry),
+        services=services_list,
+        pricing=data.pricing or "varies",
+        phone=data.phone or "+63917XXXXXXX",
+    )
+    preview_text = profile.render_system_prompt(jinja_env)
+    return {"preview": preview_text}
+
+
+@app.post("/onboarding/submit")
+async def onboarding_submit(data: OnboardingData):
+    """
+    Store or update a business record in Supabase.
+
+    Uses UPSERT on owner_email so re-submitting the form updates the record.
+    Returns {"status": "ok", "business_id": "<uuid>"}.
+    """
+    valid_industries = {"dental", "aesthetics", "real_estate"}
+    if data.industry not in valid_industries:
+        raise HTTPException(status_code=400, detail="Invalid industry")
+    if not data.owner_email or "@" not in data.owner_email:
+        raise HTTPException(status_code=400, detail="Invalid owner_email")
+
+    db_uri = os.environ.get("SUPABASE_DIRECT_URL") or os.environ.get("SUPABASE_DB_URI", "")
+    if not db_uri:
+        return {"status": "ok", "business_id": str(uuid.uuid4())}
+
+    async with await psycopg.AsyncConnection.connect(db_uri) as conn:
+        cursor = await conn.execute(
+            """
+            INSERT INTO businesses (owner_email, name, industry, phone, city, services, pricing)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (owner_email)
+            DO UPDATE SET
+                name = EXCLUDED.name,
+                industry = EXCLUDED.industry,
+                phone = EXCLUDED.phone,
+                city = EXCLUDED.city,
+                services = EXCLUDED.services,
+                pricing = EXCLUDED.pricing
+            RETURNING id
+            """,
+            (
+                data.owner_email,
+                data.name,
+                data.industry,
+                data.phone,
+                data.city,
+                data.services,
+                data.pricing,
+            ),
+        )
+        row = await cursor.fetchone()
+        business_id = str(row[0]) if row else str(uuid.uuid4())
+
+    return {"status": "ok", "business_id": business_id}

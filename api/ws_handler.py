@@ -18,6 +18,7 @@ from fastapi import WebSocket
 
 import api.main as app_state
 from agent.models import DEMO_PROFILES
+from api.escalation_service import send_escalation_email, store_escalation
 from api.guardrails import (
     check_ai_disclosure,
     holding_message_429,
@@ -28,6 +29,10 @@ from api.main import validate_thread_id
 # In-memory 429 backoff tracker: thread_id -> retry-after epoch (float).
 # If the current time is before the stored epoch, the 30s hold is still active.
 _429_backoff: dict[str, float] = {}
+
+# De-duplication: track which threads have already fired escalation notification.
+# Prevents re-sending on every subsequent message after the escalate stage is reached.
+_escalated_threads: set[str] = set()
 
 
 async def store_appointment(thread_id: str, business_id: str, confirmed_time: str) -> None:
@@ -183,11 +188,33 @@ async def handle_ws(websocket: WebSocket, thread_id: str) -> None:
                     }
                 )
 
+        is_escalated = values.get("escalated", False)
+        system_alert = values.get("system_alert", "")
+
         await websocket.send_json(
             {
                 "type": "state",
                 "stage": stage,
-                "escalated": values.get("escalated", False),
-                "system_alert": values.get("system_alert", ""),
+                "escalated": is_escalated,
+                "system_alert": system_alert,
             }
         )
+
+        # --- Escalation notification (once per thread) ---
+        if is_escalated and thread_id not in _escalated_threads:
+            _escalated_threads.add(thread_id)
+            lead_phone = ws_message.get("lead_phone", thread_id)
+            business_id = ws_message.get("business_id", os.environ.get("BUSINESS_ID", ""))
+            to_email = os.environ.get("RESEND_TO_EMAIL", "")
+            # Build conversation summary from last 3 messages
+            all_msgs = values.get("messages", [])
+            last_three = all_msgs[-3:] if len(all_msgs) >= 3 else all_msgs
+            summary_lines = []
+            for m in last_three:
+                role = (m.get("role") if isinstance(m, dict) else getattr(m, "role", ""))
+                content = (m.get("content") if isinstance(m, dict) else getattr(m, "content", ""))
+                summary_lines.append(f"{role}: {content}")
+            conversation_summary = "\n".join(summary_lines)
+            await store_escalation(thread_id, business_id, lead_phone, conversation_summary)
+            if to_email:
+                await send_escalation_email(to_email, lead_phone, conversation_summary)

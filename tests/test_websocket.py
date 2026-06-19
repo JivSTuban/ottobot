@@ -231,3 +231,98 @@ async def test_429_holding_message(monkeypatch):
     import time
 
     assert _429_backoff.get(thread_id, 0) > time.time()
+
+
+# ---------------------------------------------------------------------------
+# Escalation notification tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_escalation_fires_once(monkeypatch):
+    """ESC-01/02: store_escalation and send_escalation_email called exactly once per thread."""
+    import api.main as app_state
+    from api.ws_handler import _escalated_threads
+
+    thread_id = str(uuid.uuid4())
+    _escalated_threads.discard(thread_id)
+
+    async def fake_astream(initial_state, config, stream_mode):
+        yield {"agent": {"messages": [{"role": "assistant", "content": "Tawagan na kayo!"}]}}
+
+    fake_state = MagicMock()
+    fake_state.values = {
+        "stage": "escalate",
+        "escalated": True,
+        "system_alert": "Hot lead detected",
+        "messages": [
+            {"role": "user", "content": "Gusto ko mag-book"},
+            {"role": "assistant", "content": "Tawagan na kayo!"},
+        ],
+    }
+    fake_compiled = MagicMock()
+    fake_compiled.astream = fake_astream
+    fake_compiled.aget_state = AsyncMock(return_value=fake_state)
+
+    monkeypatch.setattr(app_state, "compiled_graph", fake_compiled)
+    monkeypatch.setenv("RESEND_TO_EMAIL", "owner@example.com")
+
+    store_mock = AsyncMock()
+    email_mock = AsyncMock()
+
+    from api import ws_handler
+    monkeypatch.setattr(ws_handler, "store_escalation", store_mock)
+    monkeypatch.setattr(ws_handler, "send_escalation_email", email_mock)
+
+    ws = FakeWebSocket([{"text": "gusto ko mag-book", "industry": "dental"}])
+    await ws_handler.handle_ws(ws, thread_id)
+
+    store_mock.assert_awaited_once()
+    email_mock.assert_awaited_once()
+
+    # Second message with same thread — escalation should NOT fire again
+    ws2 = FakeWebSocket([{"text": "kelan?", "industry": "dental"}])
+    await ws_handler.handle_ws(ws2, thread_id)
+
+    assert store_mock.await_count == 1
+    assert email_mock.await_count == 1
+
+    # Cleanup
+    _escalated_threads.discard(thread_id)
+
+
+@pytest.mark.asyncio
+async def test_escalation_does_not_fire_when_not_escalated(monkeypatch):
+    """ESC-01: No escalation notification when escalated=False."""
+    import api.main as app_state
+
+    thread_id = str(uuid.uuid4())
+
+    async def fake_astream(initial_state, config, stream_mode):
+        yield {"agent": {"messages": [{"role": "assistant", "content": "Anong oras ka available?"}]}}
+
+    fake_state = MagicMock()
+    fake_state.values = {
+        "stage": "qualify",
+        "escalated": False,
+        "system_alert": "",
+        "messages": [{"role": "user", "content": "Hello"}],
+    }
+    fake_compiled = MagicMock()
+    fake_compiled.astream = fake_astream
+    fake_compiled.aget_state = AsyncMock(return_value=fake_state)
+
+    monkeypatch.setattr(app_state, "compiled_graph", fake_compiled)
+
+    store_mock = AsyncMock()
+    email_mock = AsyncMock()
+
+    from api import ws_handler
+    monkeypatch.setattr(ws_handler, "store_escalation", store_mock)
+    monkeypatch.setattr(ws_handler, "send_escalation_email", email_mock)
+
+    ws = FakeWebSocket([{"text": "hello", "industry": "dental"}])
+    await ws_handler.handle_ws(ws, thread_id)
+
+    store_mock.assert_not_awaited()
+    email_mock.assert_not_awaited()

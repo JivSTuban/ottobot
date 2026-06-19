@@ -16,10 +16,20 @@ import { PERSONA_ASSETS } from "./assets/personas";
 import { IndustrySelector } from "./IndustrySelector";
 import { LeadChat } from "./LeadChat";
 import { OwnerPanel } from "./OwnerPanel";
+import { OnboardingWizard } from "./OnboardingWizard";
 import { useWebSocket } from "./useWebSocket";
 import "./index.css";
 
+/** Simple path-based router — avoids react-router dependency for 2 routes. */
+function useRoute(): "onboarding" | "dashboard" | "demo" {
+  const path = window.location.pathname;
+  if (path === "/onboarding") return "onboarding";
+  if (path === "/dashboard") return "dashboard";
+  return "demo";
+}
+
 function App() {
+  const route = useRoute();
   const [industry, setIndustry] = useState<IndustryKey | null>(null);
 
   // threadId is stable for the lifetime of this page load — uuid4 per T-06-01
@@ -28,7 +38,7 @@ function App() {
   // WebSocket URL — useMemo ensures the hook only re-opens on URL change
   const wsUrl = useMemo(() => `ws://localhost:8000/ws/${threadId}`, [threadId]);
 
-  const { messages, stage, escalated, systemAlert, send, wsError } = useWebSocket(wsUrl);
+  const { messages, stage, escalated, systemAlert, escalationAlert, send, wsError } = useWebSocket(wsUrl);
 
   function handleSend(text: string) {
     if (industry) {
@@ -37,6 +47,10 @@ function App() {
   }
 
   const asset = industry ? PERSONA_ASSETS[industry] : null;
+
+  if (route === "onboarding") {
+    return <OnboardingWizard />;
+  }
 
   return (
     <>
@@ -94,6 +108,7 @@ function App() {
             stage={stage}
             escalated={escalated}
             industry={industry}
+            escalationAlert={escalationAlert}
           />
         </main>
       )}

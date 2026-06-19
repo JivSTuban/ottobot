@@ -86,6 +86,29 @@ describe("OwnerPanel — escalation alert", () => {
     renderPanel("escalate", true);
     expect(screen.getAllByRole("alert")[0].textContent).toContain("HOT LEAD — Tawagan na!");
   });
+
+  it("escalation alert shows escalationAlert detail when provided", () => {
+    const { container } = render(
+      <OwnerPanel
+        messages={noMessages}
+        stage="escalate"
+        escalated={true}
+        industry="dental"
+        escalationAlert="Hot lead detected. Contact the lead now. Stage: confirm"
+      />
+    );
+    const alert = container.querySelector('[role="alert"]') as HTMLElement;
+    expect(alert).toBeTruthy();
+    expect(alert.textContent).toContain("Hot lead detected");
+    expect(alert.querySelector(".escalation-detail")).toBeTruthy();
+  });
+
+  it("escalation alert does NOT show detail element when escalationAlert is absent", () => {
+    const { container } = renderPanel("escalate", true);
+    const alert = container.querySelector('[role="alert"]') as HTMLElement;
+    expect(alert).toBeTruthy();
+    expect(alert.querySelector(".escalation-detail")).toBeNull();
+  });
 });
 
 describe("OwnerPanel — conversation mirror", () => {

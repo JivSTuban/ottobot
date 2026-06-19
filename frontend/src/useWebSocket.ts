@@ -17,7 +17,7 @@ import type { IndustryKey } from "./assets/personas";
 /** Discriminated union of all WebSocket message types from the backend */
 export type WsMessage =
   | { type: "token"; content: string; node?: string }
-  | { type: "state"; stage: Stage; escalated: boolean }
+  | { type: "state"; stage: Stage; escalated: boolean; system_alert?: string }
   | { type: "system_alert"; content: string };
 
 export interface UseWebSocketReturn {
@@ -25,6 +25,8 @@ export interface UseWebSocketReturn {
   stage: Stage;
   escalated: boolean;
   systemAlert: string | null;
+  /** system_alert text from the escalate state event — shown inside the OwnerPanel banner */
+  escalationAlert: string | null;
   send: (text: string, industry: IndustryKey) => void;
   messages: Message[];
   wsError: boolean;
@@ -43,6 +45,7 @@ export function useWebSocket(url: string): UseWebSocketReturn {
   const [systemAlert, setSystemAlert] = useState<string | null>(null);
   const [tokens, setTokens] = useState<string[]>([]);
   const [wsError, setWsError] = useState<boolean>(false);
+  const [escalationAlert, setEscalationAlert] = useState<string | null>(null);
 
   useEffect(() => {
     const ws = new WebSocket(url);
@@ -92,6 +95,9 @@ export function useWebSocket(url: string): UseWebSocketReturn {
       } else if (msg.type === "state") {
         setStage(msg.stage);
         setEscalated(msg.escalated);
+        if (msg.escalated && msg.system_alert) {
+          setEscalationAlert(msg.system_alert);
+        }
         // Finalize the streaming bubble
         setMessages((prev) => {
           const last = prev[prev.length - 1];
@@ -130,6 +136,7 @@ export function useWebSocket(url: string): UseWebSocketReturn {
     stage,
     escalated,
     systemAlert,
+    escalationAlert,
     send,
     messages,
     wsError,

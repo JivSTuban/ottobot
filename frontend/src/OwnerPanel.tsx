@@ -23,6 +23,8 @@ interface OwnerPanelProps {
   thread_id?: string;
   /** WebSocket send function from useWebSocket hook */
   send?: (msg: string) => void;
+  /** system_alert detail from the escalate state event */
+  escalationAlert?: string | null;
 }
 
 /** Maps LeadStatus to human-readable Filipino badge label */
@@ -40,7 +42,7 @@ function getBadgeLabel(stage: Stage): string {
   }
 }
 
-export function OwnerPanel({ messages, stage, escalated, industry, proposed_appointment, thread_id, send }: OwnerPanelProps) {
+export function OwnerPanel({ messages, stage, escalated, industry, proposed_appointment, thread_id, send, escalationAlert }: OwnerPanelProps) {
   const asset = industry ? PERSONA_ASSETS[industry] : null;
   const badgeLabel = getBadgeLabel(stage);
   const leadStatus = stageToLeadStatus(stage);
@@ -110,11 +112,13 @@ export function OwnerPanel({ messages, stage, escalated, industry, proposed_appo
             top: 0,
             left: 0,
             right: 0,
-            height: 64,
+            minHeight: 64,
             background: "var(--destructive)",
             display: "flex",
+            flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
+            padding: "8px 16px",
             fontSize: "14px",
             fontWeight: 600,
             color: "#ffffff",
@@ -122,7 +126,15 @@ export function OwnerPanel({ messages, stage, escalated, industry, proposed_appo
             animation: "slideDown 200ms ease-in forwards",
           }}
         >
-          HOT LEAD — Tawagan na!
+          <span>HOT LEAD — Tawagan na!</span>
+          {escalationAlert && (
+            <span
+              className="escalation-detail"
+              style={{ fontSize: "12px", fontWeight: 400, marginTop: 4, opacity: 0.9 }}
+            >
+              {escalationAlert}
+            </span>
+          )}
         </div>
       )}
 

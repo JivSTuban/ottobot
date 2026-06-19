@@ -8,9 +8,9 @@ Build an AI outbound sales agent that speaks Tagalog/Taglish and books appointme
 
 - [x] **Phase 1: Agent Core & Demo UI** — Working LangGraph agent with Tagalog conversation stages, demo split-screen UI (completed 2026-06-15)
 - [x] **Phase 2: Appointment Reconciler** — Agent proposes time slots, business owner confirms via app, appointments stored in Supabase (completed 2026-06-16)
-- [ ] **Phase 3: Escalation Flow** — Hot lead detection, push notification to business owner, escalation state tracking
-- [ ] **Phase 4: Real Channels** — Facebook Messenger and SMS (Semaphore PH) integration, lead source ingestion
-- [ ] **Phase 5: Business Onboarding Website** — Multi-step onboarding form, industry template selection, Supabase Auth
+- [x] **Phase 3: Escalation Flow** — Hot lead detection, push notification to business owner, escalation state tracking (completed 2026-06-18)
+- [x] **Phase 4: Real Channels** — Facebook Messenger and SMS (Semaphore PH) integration, lead source ingestion (completed 2026-06-19)
+- [x] **Phase 5: Business Onboarding Website** — Multi-step onboarding form, industry template selection, Supabase Auth (completed 2026-06-19)
 - [ ] **Phase 6: Mobile App** — Push notifications, lead pipeline dashboard, persona management, availability calendar
 - [ ] **Phase 7: Agency / Multi-Account** — Agency accounts managing multiple business owner sub-accounts
 - [ ] **Phase 8: Autoresearch Loop** — Autonomous overnight prompt/agent optimization via ratchet loop (Karpathy autoresearch pattern adapted for conversation agents)
@@ -74,7 +74,11 @@ Build an AI outbound sales agent that speaks Tagalog/Taglish and books appointme
   2. Business owner receives push notification: "Hot lead — call [number] now" with conversation summary
   3. Escalation state and outcome (called / not called) are logged in Supabase and visible in the app
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+- [x] 03-01-PLAN.md — Escalation service backend (Resend email + Supabase escalations table)
+- [x] 03-02-PLAN.md — Wire escalation into ws_handler (de-dup per thread)
+- [x] 03-03-PLAN.md — OwnerPanel escalation UI (show system_alert detail in HOT LEAD banner)
 
 ### Phase 4: Real Channels
 
@@ -87,7 +91,11 @@ Build an AI outbound sales agent that speaks Tagalog/Taglish and books appointme
   2. Agent receives an SMS and replies via Semaphore PH
   3. Business owner can upload a contact list and trigger outbound campaigns; ad lead form webhook ingests leads automatically
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+- [x] 04-01-PLAN.md — SMS channel + deterministic thread ID + leads/messages tables
+- [x] 04-02-PLAN.md — Facebook Messenger webhook (verify + message routing)
+- [x] 04-03-PLAN.md — Lead ingestion: CSV upload + Meta Lead Ads webhook
 
 ### Phase 5: Business Onboarding Website
 
@@ -171,9 +179,9 @@ Build an AI outbound sales agent that speaks Tagalog/Taglish and books appointme
 |-------|----------------|--------|-----------|
 | 1. Agent Core & Demo UI | 8/8 | Complete   | 2026-06-16 |
 | 2. Appointment Reconciler | 4/4 | Complete    | 2026-06-16 |
-| 3. Escalation Flow | 0/TBD | Not started | - |
-| 4. Real Channels | 0/TBD | Not started | - |
-| 5. Business Onboarding Website | 0/TBD | Not started | - |
+| 3. Escalation Flow | 3/3 | Complete | 2026-06-18 |
+| 4. Real Channels | 3/3 | Complete | 2026-06-19 |
+| 5. Business Onboarding Website | 2/2 | Complete | 2026-06-19 |
 | 6. Mobile App | 0/TBD | Not started | - |
 | 7. Agency / Multi-Account | 0/TBD | Not started | - |
 | 8. Autoresearch Loop | 0/TBD | Not started | - |

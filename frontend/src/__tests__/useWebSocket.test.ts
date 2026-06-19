@@ -16,6 +16,7 @@ class MockWebSocket {
   onclose: (() => void) | null = null;
   send = vi.fn();
   close = vi.fn();
+  readyState = 1; // WebSocket.OPEN — useWebSocket.send() checks this before calling .send()
 
   constructor(url: string) {
     this.url = url;
