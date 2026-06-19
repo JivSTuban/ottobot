@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Plan 06-02 complete
-last_updated: "2026-06-19T07:58:23.057Z"
-last_activity: 2026-06-19 -- Phase 06 Plan 02 completed
+stopped_at: Plan 06-04 complete — Phase 06 done
+last_updated: "2026-06-19T09:00:00.000Z"
+last_activity: 2026-06-19 -- Phase 06 Plan 04 completed
 progress:
   total_phases: 8
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 24
-  completed_plans: 17
-  percent: 25
+  completed_plans: 19
+  percent: 79
 ---
 
 # Project State
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-06-11)
 
 ## Current Position
 
-Phase: 06 (mobile-app) — EXECUTING
-Plan: 4 of 4
-Status: Ready to execute
-Last activity: 2026-06-19 -- Phase 06 Plan 02 completed
+Phase: 06 (mobile-app) — COMPLETE
+Plan: 4 of 4 (all complete)
+Status: Phase complete — ready for Phase 07
+Last activity: 2026-06-19 -- Phase 06 Plan 04 completed
 
 Progress: [████████████████████] 100%
 
@@ -118,11 +118,18 @@ None yet.
 - msg_type check placed BEFORE user_text extraction — confirm_appointment messages must not trigger a LangGraph LLM call (Pitfall 4)
 - business_id accepted from WS message body with BUSINESS_ID env var fallback; Phase 5 adds auth-gated validation
 
+### Plan 06-04 Decisions
+
+- APP-04 (persona editing) deferred to Phase 7 per POLICY.md — no persona screen created in Phase 6
+- conversation/[id].tsx is a stack screen (not a tab) — tab navigator only has pipeline and settings
+- business_id derived from session.user.id in settings (not client-supplied string) — T-06-12 mitigation
+- messages sorted descending before FlatList inverted to display newest at bottom of chat
+
 ## Session Continuity
 
-Last session: 2026-06-19T07:58:23.054Z
-Stopped at: Plan 06-02 complete
-Resume file: None — continue with Plan 06-03
+Last session: 2026-06-19T09:00:00.000Z
+Stopped at: Plan 06-04 complete — Phase 06 fully done
+Resume file: None — continue with Phase 07
 
 ## Performance Metrics
 
@@ -130,3 +137,4 @@ Resume file: None — continue with Plan 06-03
 |-------|------|----------|-------|
 | Phase 06-mobile-app P01 | 25m | 2 tasks | 5 files |
 | Phase 06-mobile-app P02 | 25m | 2 tasks | 8 files |
+| Phase 06-mobile-app P04 | 20m | 2 tasks | 7 files |
