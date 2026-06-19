@@ -8,10 +8,17 @@ export function useAuth() {
 
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-    });
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        setSession(session);
+        setLoading(false);
+      })
+      .catch(() => {
+        // AsyncStorage failures (e.g. corrupted storage on fresh install)
+        // must not leave loading=true indefinitely, causing a blank screen.
+        setSession(null);
+        setLoading(false);
+      });
 
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
