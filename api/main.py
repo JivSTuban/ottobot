@@ -967,7 +967,12 @@ async def register_push_token(
     T-06-05 mitigation: expo_token format validated before storage.
     One token per business (UPSERT on business_id).
     """
-    if not req.expo_token.startswith("ExponentPushToken["):
+    token = req.expo_token
+    if not (
+        token.startswith("ExponentPushToken[")
+        and token.endswith("]")
+        and len(token) > len("ExponentPushToken[]")
+    ):
         raise HTTPException(status_code=422, detail="Invalid Expo push token format")
 
     db_uri = os.environ.get("SUPABASE_DIRECT_URL") or os.environ.get("SUPABASE_DB_URI", "")
