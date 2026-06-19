@@ -8,6 +8,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { useAuth } from '../../hooks/useAuth';
+import { supabase } from '../../lib/supabase';
 
 interface DaySlot {
   day_of_week: number;
@@ -39,12 +40,27 @@ export default function SettingsScreen() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Real businesses.id (different from auth UUID session.user.id)
+  const [businessId, setBusinessId] = useState<string | null>(null);
+
+  // Resolve the real businesses table UUID from owner_email
+  useEffect(() => {
+    if (!session?.user?.email) return;
+    supabase
+      .from('businesses')
+      .select('id')
+      .eq('owner_email', session.user.email)
+      .single()
+      .then(({ data }) => {
+        if (data?.id) setBusinessId(data.id as string);
+      });
+  }, [session]);
 
   async function fetchAvailability() {
-    if (!session?.access_token || !session?.user?.id) return;
+    if (!session?.access_token || !businessId) return;
     try {
       const response = await fetch(
-        `${process.env.EXPO_PUBLIC_API_URL}/availability/${session.user.id}`,
+        `${process.env.EXPO_PUBLIC_API_URL}/availability/${businessId}`,
         {
           headers: {
             Authorization: `Bearer ${session.access_token}`,
@@ -79,7 +95,7 @@ export default function SettingsScreen() {
   }
 
   async function saveAvailability() {
-    if (!session?.access_token || !session?.user?.id) return;
+    if (!session?.access_token || !businessId) return;
     setError(null);
     setSaving(true);
     try {
@@ -92,7 +108,7 @@ export default function SettingsScreen() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            business_id: session.user.id,
+            business_id: businessId,
             slots: slots.filter((s) => s.is_open),
           }),
         }
@@ -112,7 +128,7 @@ export default function SettingsScreen() {
 
   useEffect(() => {
     fetchAvailability();
-  }, [session]);
+  }, [session, businessId]);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
