@@ -34,10 +34,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   agentAlign: {
-    alignItems: 'flex-start',
+    // Agent = outbound (our side) → right, per UAT test 9
+    alignItems: 'flex-end',
   },
   leadAlign: {
-    alignItems: 'flex-end',
+    // Lead = inbound → left
+    alignItems: 'flex-start',
   },
   bubble: {
     maxWidth: '75%',
