@@ -36,3 +36,10 @@ Thumbs.db
 # Claude Code local settings (contains personal tokens)
 .claude/settings.local.json
 .mcp.json
+
+# Session artifacts (screenshots, graph dumps, browser automation)
+graphify-out/
+.playwright-mcp/
+proto-*.png
+uat-*.png
+webapp-*.png

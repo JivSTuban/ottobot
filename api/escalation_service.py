@@ -122,13 +122,23 @@ async def store_escalation(
         logger.debug("No DB URI — skipping escalation storage")
         return
 
-    async with await psycopg.AsyncConnection.connect(db_uri) as conn:
-        await conn.execute(
-            """
-            INSERT INTO escalations
-                (thread_id, business_id, lead_phone, conversation_summary, outcome)
-            VALUES (%s, %s, %s, %s, 'not_called')
-            ON CONFLICT (thread_id) DO NOTHING
-            """,
-            (thread_id, business_id, lead_phone, conversation_summary),
+    # Persisting the escalation is best-effort: the real-time HOT-LEAD alert has
+    # already fired via graph state. A dead/unreachable DB must NOT propagate —
+    # an uncaught OperationalError here would bubble out of the WebSocket handler
+    # and close the live conversation. Log and degrade instead.
+    try:
+        async with await psycopg.AsyncConnection.connect(db_uri) as conn:
+            await conn.execute(
+                """
+                INSERT INTO escalations
+                    (thread_id, business_id, lead_phone, conversation_summary, outcome)
+                VALUES (%s, %s, %s, %s, 'not_called')
+                ON CONFLICT (thread_id) DO NOTHING
+                """,
+                (thread_id, business_id, lead_phone, conversation_summary),
+            )
+    except (psycopg.OperationalError, psycopg.DatabaseError) as exc:
+        logger.warning(
+            "Escalation DB write failed — alert already sent, continuing without persistence: %s",
+            type(exc).__name__,
         )

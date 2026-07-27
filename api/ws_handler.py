@@ -17,6 +17,7 @@ import psycopg
 from fastapi import WebSocket
 
 import api.main as app_state
+from agent.graph import OUTBOUND_START_MARKER
 from agent.models import DEMO_PROFILES
 from api.escalation_service import send_escalation_email, send_push_notification, store_escalation
 from api.guardrails import (
@@ -40,11 +41,18 @@ async def store_appointment(thread_id: str, business_id: str, confirmed_time: st
     db_uri = os.environ.get("SUPABASE_DIRECT_URL") or os.environ.get("SUPABASE_DB_URI", "")
     if not db_uri:
         return  # no-op in test environments
-    async with await psycopg.AsyncConnection.connect(db_uri) as conn:
-        await conn.execute(
-            "INSERT INTO appointments (thread_id, business_id, proposed_time, status) "
-            "VALUES (%s, %s, %s::timestamptz, 'confirmed')",
-            (thread_id, business_id, confirmed_time)
+    # Best-effort: a dead/unreachable DB must not crash the live WebSocket turn.
+    try:
+        async with await psycopg.AsyncConnection.connect(db_uri) as conn:
+            await conn.execute(
+                "INSERT INTO appointments (thread_id, business_id, proposed_time, status) "
+                "VALUES (%s, %s, %s::timestamptz, 'confirmed')",
+                (thread_id, business_id, confirmed_time)
+            )
+    except (psycopg.OperationalError, psycopg.DatabaseError) as exc:
+        import logging as _logging
+        _logging.getLogger(__name__).warning(
+            "Appointment DB write failed — continuing without persistence: %s", type(exc).__name__
         )
 
 
@@ -121,7 +129,7 @@ async def handle_ws(websocket: WebSocket, thread_id: str) -> None:
         # Outbound start: agent fires the opening message with no prior user input.
         if is_outbound_start:
             trigger_text = (
-                "[OUTBOUND_START] Ipadala ang iyong unang mensahe sa prospect. "
+                f"{OUTBOUND_START_MARKER} Ipadala ang iyong unang mensahe sa prospect. "
                 "MAHALAGANG TUNTUNIN: "
                 "(1) HUWAG banggitin na ikaw ay AI o assistant — mag-introduce lang ng pangalan mo at business. "
                 "(2) Isang o dalawang pangungusap LANG — maikli, natural, at conversational. "
@@ -167,9 +175,27 @@ async def handle_ws(websocket: WebSocket, thread_id: str) -> None:
                 del _429_backoff[k]
             await websocket.send_json(holding_message_429())
             continue
+        except Exception as exc:
+            import logging as _log
+            _log.getLogger(__name__).error("Stream error for thread %s: %s", thread_id, exc)
+            await websocket.send_json(
+                {"type": "token", "content": "Nagkaroon ng error. Subukan ulit.", "node": "error"}
+            )
+            await websocket.send_json(
+                {"type": "state", "stage": "intro", "escalated": False, "system_alert": ""}
+            )
+            continue
 
         # --- Post-stream state event (DEMO-02 / AGENT-05) ---
-        final_state = await app_state.compiled_graph.aget_state(config)
+        try:
+            final_state = await app_state.compiled_graph.aget_state(config)
+        except Exception as exc:
+            import logging as _log
+            _log.getLogger(__name__).error("aget_state error for thread %s: %s", thread_id, exc)
+            await websocket.send_json(
+                {"type": "state", "stage": "intro", "escalated": False, "system_alert": ""}
+            )
+            continue
         values = final_state.values if final_state else {}
         stage = values.get("stage", "intro")
 

@@ -45,7 +45,24 @@ from agent.state import ConversationState
 
 MAX_HISTORY = 20
 
+# Marker prefixed onto the synthetic first user message when the agent fires the
+# opening outbound message (see api/ws_handler.py). On this turn we suppress the
+# AI-disclosure block in the system prompt — we don't announce AI upfront.
+OUTBOUND_START_MARKER = "[OUTBOUND_START]"
+
 jinja_env = make_env()
+
+
+def _is_outbound_start(messages: list) -> bool:
+    """True if any user message on this turn carries the outbound-start marker."""
+    for m in messages:
+        role = m.get("role") if hasattr(m, "get") else getattr(m, "role", "")
+        if role != "user":
+            continue
+        content = m.get("content") if hasattr(m, "get") else getattr(m, "content", "")
+        if isinstance(content, str) and content.lstrip().startswith(OUTBOUND_START_MARKER):
+            return True
+    return False
 
 BOOKING_PHRASES_FAST = [
     "gusto ko mag-book",
@@ -198,7 +215,9 @@ async def agent_node(state: ConversationState) -> dict:
     system_prefix: list = []
     if stage == "intro" and not has_system:
         profile = DEMO_PROFILES.get(industry, DEMO_PROFILES["dental"])
-        rendered = profile.render_system_prompt(jinja_env)
+        rendered = profile.render_system_prompt(
+            jinja_env, outbound_start=_is_outbound_start(messages)
+        )
         system_prefix = [{"role": "system", "content": rendered}]
 
     # Stage instruction appended as final system message per-turn

@@ -162,6 +162,53 @@ async def test_agent_node_reply_contains_fallback_when_no_slots(monkeypatch):
     assert FALLBACK_PHRASE in all_content
 
 
+async def test_agent_node_suppresses_ai_disclosure_on_outbound_start():
+    """Outbound-start first turn: system prompt must NOT contain the AI-disclosure block."""
+    from agent.graph import OUTBOUND_START_MARKER
+
+    captured_messages = []
+
+    async def capture_completion(*args, **kwargs):
+        captured_messages.extend(kwargs.get("messages", []))
+        return _fake_completion("Kumusta! Ako si Rica ng Bright Smile Dental.")
+
+    with patch("agent.llm.router.acompletion", capture_completion):
+        from agent.graph import agent_node
+        state = _make_state(
+            stage="intro",
+            messages=[{"role": "user", "content": f"{OUTBOUND_START_MARKER} unang mensahe"}],
+        )
+        await agent_node(state)
+
+    system_text = " ".join(
+        m.get("content", "") for m in captured_messages if m.get("role") == "system"
+    )
+    assert "transparency" not in system_text
+    assert "AI assistant" not in system_text
+
+
+async def test_agent_node_includes_ai_disclosure_on_normal_intro():
+    """Normal inbound first turn: system prompt MUST contain the AI-disclosure block."""
+    captured_messages = []
+
+    async def capture_completion(*args, **kwargs):
+        captured_messages.extend(kwargs.get("messages", []))
+        return _fake_completion("Kumusta po!")
+
+    with patch("agent.llm.router.acompletion", capture_completion):
+        from agent.graph import agent_node
+        state = _make_state(
+            stage="intro",
+            messages=[{"role": "user", "content": "Kumusta, may tanong ako"}],
+        )
+        await agent_node(state)
+
+    system_text = " ".join(
+        m.get("content", "") for m in captured_messages if m.get("role") == "system"
+    )
+    assert "transparency" in system_text
+
+
 async def test_agent_node_does_not_call_slots_on_other_stages(monkeypatch):
     """When stage != propose_appointment, get_available_slots is NOT called."""
     mock_get_slots = AsyncMock(return_value=[])

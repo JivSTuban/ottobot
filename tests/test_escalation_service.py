@@ -133,3 +133,23 @@ async def test_store_escalation_inserts_row(monkeypatch):
     assert params[1] == "biz-1"
     assert params[2] == "+63917000000"
     assert "last 3 messages" in params[3]
+
+
+@pytest.mark.asyncio
+async def test_store_escalation_survives_db_failure(monkeypatch):
+    """A dead/unreachable DB must NOT propagate — the live WebSocket conversation
+    stays alive; persisting the escalation is best-effort. (Root cause of the
+    escalation-time WS drop: an uncaught psycopg.OperationalError.)"""
+    monkeypatch.setenv("SUPABASE_DIRECT_URL", "postgresql://postgres.dead@localhost/test")
+
+    import psycopg
+
+    from api.escalation_service import store_escalation
+
+    with patch(
+        "psycopg.AsyncConnection.connect",
+        side_effect=psycopg.OperationalError("tenant/user postgres.dead not found"),
+    ):
+        # Must return None without raising.
+        result = await store_escalation("thread-1", "biz-1", "+63917000000", "summary")
+    assert result is None

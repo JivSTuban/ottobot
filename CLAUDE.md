@@ -1,22 +1,21 @@
 # OttoBot — Claude Code Project Instructions
 
-## Autonomous Build Mode
+## Workflow
 
-This project uses autonomous build mode. Before starting any phase work, read:
+This project runs on the `/dev` system. Load context before acting; log learnings after.
 
-```
-.planning/POLICY.md
-```
-
-It pre-answers all design decisions for phases 2-7. Do not pause for confirmation on questions already answered there.
+- Project KB (Obsidian): `~/Second Brain/Projects/ottobot/` — `NOW`, `DECISIONS`, `WORKS`, `FAILURES`, `TASKS`, `PLAN`, `JOURNAL`
+- Start a task: `/dev <source>` · debug: `/dev-debug` · review diff: `/dev-review` · ship: `/dev-ship`
+- Read `NOW.md` + `TASKS.md` for current state; `DECISIONS.md`/`WORKS.md`/`FAILURES.md` for constraints and traps before writing code.
+- The old GSD autonomous-build artifacts are archived read-only at `.planning-archive/` (POLICY.md there still holds the pre-answered per-phase design decisions for phases 7–8).
 
 ## Project
 
 OttoBot — Filipino AI outbound sales agent (Tagalog/Taglish) that books SMB appointments.
 
-**Stack:** Python 3.12 + FastAPI + LangGraph + Supabase + React/Vite + Llama 4 Maverick via LiteLLM/Groq
+**Stack:** Python 3.12 + FastAPI + LangGraph + Supabase + React/Vite + Expo + Llama 4 Maverick via LiteLLM/Groq
 
-**Current state:** Phase 1 complete (agent core + demo UI, 68 tests passing).
+**Current state:** Phases 1–6 shipped (132 tests passing, Phase 06 review 9/9 fixed). Phase 06 mobile UAT tests 6–11 pending; open AI-disclosure bug in `agent/graph.py`. Next up: Phase 07 (Agency / Multi-Account).
 
 ## How to Run
 
@@ -36,10 +35,10 @@ Env vars: copy `.env.example` → `.env`, fill in keys.
 - Jinja2 templates: use singleton `jinja_env` from `agent/graph.py`, never `make_env()` per-request
 - WebSocket send: always check `readyState === WebSocket.OPEN` before calling `.send()`
 
-## To Start Autonomous Build
+## To Continue Work
 
 ```
-/gsd-autonomous --from 2
+/dev            # start a session — gather → context → plan → confirm → execute → verify → log
 ```
 
-Reads `.planning/POLICY.md` for all design decisions. Jiv only needs to intervene on blockers.
+Reads the Obsidian KB for state and constraints. See `PLAN.md` for the current slice.

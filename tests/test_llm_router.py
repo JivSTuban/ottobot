@@ -22,16 +22,44 @@ def test_router_is_module_level_singleton():
     assert llm_mod_a.router is llm_mod_b.router
 
 
-def test_router_has_three_deployments():
-    """Test 2: router.model_list has exactly 3 entries with groq/, gemini/, mistral/ prefixes."""
-    from agent.llm import router
+def test_build_model_list_includes_all_when_keys_present():
+    """All three providers appear when each has a non-empty API key."""
+    from agent.llm import _build_model_list
 
-    assert len(router.model_list) == 3
-
-    models = [entry["litellm_params"]["model"] for entry in router.model_list]
+    env = {"GROQ_API_KEY": "g", "GEMINI_API_KEY": "x", "MISTRAL_API_KEY": "m"}
+    models = [d["litellm_params"]["model"] for d in _build_model_list(env.get)]
+    assert len(models) == 3
     assert any(m.startswith("groq/") for m in models)
     assert any(m.startswith("gemini/") for m in models)
     assert any(m.startswith("mistral/") for m in models)
+
+
+def test_build_model_list_excludes_providers_with_empty_key():
+    """A provider whose API key is empty/absent is dropped from the chain.
+
+    Root cause of the dead-fallback bug: an empty GEMINI_API_KEY registered a
+    keyless gemini deployment; LiteLLM raised 'Missing Gemini API key' on
+    fallback and never reached mistral. Keyless providers must be excluded.
+    """
+    from agent.llm import _build_model_list
+
+    env = {"GROQ_API_KEY": "g", "GEMINI_API_KEY": "", "MISTRAL_API_KEY": "m"}
+    models = [d["litellm_params"]["model"] for d in _build_model_list(env.get)]
+    assert any(m.startswith("groq/") for m in models)
+    assert any(m.startswith("mistral/") for m in models)
+    assert not any(m.startswith("gemini/") for m in models)
+
+
+def test_router_deployments_never_have_empty_keys():
+    """The live singleton must not carry any deployment with a blank api_key."""
+    from agent.llm import router
+
+    models = [e["litellm_params"]["model"] for e in router.model_list]
+    assert any(m.startswith("groq/") for m in models)  # primary always present
+    for entry in router.model_list:
+        assert entry["litellm_params"].get("api_key"), (
+            f"deployment {entry['litellm_params']['model']} has a blank api_key"
+        )
 
 
 def test_tpm_limit_present_for_groq():

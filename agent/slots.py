@@ -8,10 +8,13 @@ Security: db_uri read from env at call time — never logged. All SQL uses
 parameterized queries (%s placeholders). (T-02-02 mitigation)
 """
 
+import logging
 import os
 from datetime import datetime, date, time, timezone, timedelta
 
 import psycopg
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -139,16 +142,23 @@ async def get_available_slots(business_id: str, days_ahead: int = 7) -> list[dic
     if not db_uri:
         return []
 
-    async with await psycopg.AsyncConnection.connect(db_uri) as conn:
-        cur = await conn.execute(
-            """
-            SELECT day_of_week, start_time, end_time
-            FROM business_availability
-            WHERE business_id = %s
-            ORDER BY day_of_week, start_time
-            """,
-            (business_id,),
-        )
-        rows = await cur.fetchall()
+    # A dead/unreachable DB must degrade to "no slots" (the agent then offers a
+    # call-back) rather than raise — an uncaught error here would crash the live
+    # WebSocket conversation at the propose_appointment stage.
+    try:
+        async with await psycopg.AsyncConnection.connect(db_uri) as conn:
+            cur = await conn.execute(
+                """
+                SELECT day_of_week, start_time, end_time
+                FROM business_availability
+                WHERE business_id = %s
+                ORDER BY day_of_week, start_time
+                """,
+                (business_id,),
+            )
+            rows = await cur.fetchall()
+    except (psycopg.OperationalError, psycopg.DatabaseError) as exc:
+        logger.warning("Availability lookup failed — degrading to no slots: %s", type(exc).__name__)
+        return []
 
     return [{"day_of_week": r[0], "start_time": r[1], "end_time": r[2]} for r in rows]
