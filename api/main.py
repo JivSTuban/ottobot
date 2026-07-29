@@ -12,6 +12,7 @@ import logging
 import os
 import uuid
 from contextlib import asynccontextmanager
+from functools import lru_cache
 
 import jwt as pyjwt
 import psycopg
@@ -37,38 +38,37 @@ manager = ConnectionManager()
 security = HTTPBearer()
 
 
+@lru_cache(maxsize=1)
+def _jwks_client() -> "pyjwt.PyJWKClient":
+    jwks_url = os.environ.get("CLERK_JWKS_URL", "")
+    if not jwks_url:
+        raise HTTPException(status_code=401, detail="Auth not configured")
+    return pyjwt.PyJWKClient(jwks_url)
+
+
 async def get_business_id_from_token(
     credentials: HTTPAuthorizationCredentials = Depends(security),
 ) -> str:
+    """Verify a Clerk RS256 JWT via JWKS and resolve business_id from owner_email.
+
+    - business_id is NEVER trusted from the request body — derived from the JWT.
+    - Signature verified against Clerk's JWKS; issuer checked when CLERK_ISSUER set.
     """
-    Decode Supabase JWT Bearer token and resolve business_id from owner_email.
-
-    T-06-01, T-06-02, T-06-03 mitigations:
-    - business_id is NEVER trusted from request body — always derived from JWT sub
-    - JWT decoded server-side using SUPABASE_JWT_SECRET
-    - owner_email → businesses table join verifies the token owner has a business
-
-    Raises HTTPException(401) for:
-    - Missing or invalid JWT
-    - SUPABASE_JWT_SECRET not configured
-    - No business found for the token's owner_email
-    """
-    jwt_secret = os.environ.get("SUPABASE_JWT_SECRET", "")
-    if not jwt_secret:
-        raise HTTPException(status_code=401, detail="Auth not configured")
-
+    issuer = os.environ.get("CLERK_ISSUER", "")
     try:
+        signing_key = _jwks_client().get_signing_key_from_jwt(credentials.credentials)
         payload = pyjwt.decode(
             credentials.credentials,
-            jwt_secret,
-            algorithms=["HS256"],
-            options={"verify_aud": False},
+            signing_key.key,
+            algorithms=["RS256"],
+            issuer=issuer or None,
+            options={"verify_aud": False, "verify_iss": bool(issuer)},
         )
-    except pyjwt.PyJWTError:
+    except HTTPException:
+        raise
+    except Exception:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-    # Supabase JWTs carry the user email in the "email" claim; "sub" is the auth UUID.
-    # Fallback to "sub" is intentional for custom tokens where "email" may be absent.
     owner_email = payload.get("email", "") or payload.get("sub", "")
     if not owner_email:
         raise HTTPException(status_code=401, detail="Invalid token")
@@ -76,17 +76,14 @@ async def get_business_id_from_token(
     uri = db_uri()
     if not uri:
         raise HTTPException(status_code=401, detail="Business not found for this token")
-
     async with await psycopg.AsyncConnection.connect(uri) as conn:
         cursor = await conn.execute(
             "SELECT id FROM businesses WHERE owner_email = %s LIMIT 1",
             (owner_email,),
         )
         row = await cursor.fetchone()
-
     if not row:
         raise HTTPException(status_code=401, detail="Business not found for this token")
-
     return str(row[0])
 
 
