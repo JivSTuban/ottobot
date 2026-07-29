@@ -38,7 +38,7 @@ _escalated_threads: set[str] = set()
 
 
 async def store_appointment(thread_id: str, business_id: str, confirmed_time: str) -> None:
-    """Insert a confirmed appointment row into Supabase appointments table."""
+    """Insert a confirmed appointment row into Neon appointments table."""
     uri = db_uri()
     if not uri:
         return  # no-op in test environments

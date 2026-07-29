@@ -1,5 +1,5 @@
 """
-agent/slots.py — Slot math, Tagalog formatting, and Supabase availability query.
+agent/slots.py — Slot math, Tagalog formatting, and Neon Postgres availability query.
 
 Exports: get_available_slots, compute_next_slots, format_slot_tagalog,
          FALLBACK_PHRASE, DAYS_PH
@@ -127,12 +127,12 @@ def compute_next_slots(
 
 
 # ---------------------------------------------------------------------------
-# Supabase query
+# Neon Postgres query
 # ---------------------------------------------------------------------------
 
 
 async def get_available_slots(business_id: str, days_ahead: int = 7) -> list[dict]:
-    """Fetch business_availability rows from Supabase via psycopg.
+    """Fetch business_availability rows from Neon Postgres via psycopg.
 
     Returns list of dicts with keys: day_of_week, start_time, end_time.
     Returns [] if DATABASE_URL is not set

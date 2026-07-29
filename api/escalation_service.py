@@ -2,7 +2,7 @@
 api/escalation_service.py — Escalation notification and persistence helpers.
 
 Sends a plain-text email via the Resend API and stores the escalation event in
-the Supabase `escalations` table.
+the Neon `escalations` table.
 
 Both helpers are no-ops when the required env vars are absent (safe for unit tests).
 Never logs API keys or full db URIs (T-02-06).

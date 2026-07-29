@@ -277,7 +277,7 @@ async def lifespan(app: FastAPI):
 
     1. Sets up Phoenix OTLP tracing (wrapped in try/except — does NOT crash if
        Phoenix is unreachable).
-    2. Opens AsyncPostgresSaver connection to Supabase Postgres.
+    2. Opens AsyncPostgresSaver connection to Neon Postgres.
     3. Awaits checkpointer.setup() — idempotent migration runner (Pitfall 2).
     4. Compiles the LangGraph builder with the checkpointer and stores the result
        in the module-level `compiled_graph`.
@@ -440,7 +440,7 @@ async def get_availability(business_id: str):
 @app.post("/appointments/confirm")
 async def confirm_appointment(req: ConfirmAppointmentRequest):
     """
-    Store a confirmed appointment in Supabase.
+    Store a confirmed appointment in Neon.
 
     T-02-03: validate_thread_id() UUID v4 check.
     T-02-04: validate_business_id() UUID v4 check.
@@ -795,7 +795,7 @@ async def onboarding_preview(data: OnboardingData):
 @app.post("/onboarding/submit")
 async def onboarding_submit(data: OnboardingData):
     """
-    Store or update a business record in Supabase.
+    Store or update a business record in Neon.
 
     Uses UPSERT on owner_email so re-submitting the form updates the record.
     Returns {"status": "ok", "business_id": "<uuid>"}.

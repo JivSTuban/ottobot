@@ -30,7 +30,7 @@ cd frontend && npm install && cd ..
 
 # 5. Configure environment
 cp .env.example .env
-# Edit .env — fill in GROQ_API_KEY, GEMINI_API_KEY, MISTRAL_API_KEY, SUPABASE_DB_URI
+# Edit .env — fill in GROQ_API_KEY, GEMINI_API_KEY, MISTRAL_API_KEY, DATABASE_URL, CLERK_JWKS_URL
 
 # 6. Start all services
 scripts/dev.sh
@@ -47,7 +47,7 @@ open http://localhost:5173
 |-----------|-----------|----------------|
 | Agent core | LangGraph 0.6 + LiteLLM 1.83 | Stateful 7-stage conversation state machine with Groq/Gemini/Mistral routing |
 | API server | FastAPI 0.128 + uvicorn | WebSocket `/ws/{thread_id}` streaming token/state/system_alert events |
-| Persistence | LangGraph AsyncPostgresSaver → Supabase Postgres | Conversation checkpoints survive server restart |
+| Persistence | LangGraph AsyncPostgresSaver → Neon Postgres | Conversation checkpoints survive server restart |
 | Frontend | Vite 8 + React 19 + TypeScript 6 | Split-screen demo: lead chat (left) + owner panel with stage badge (right) |
 | Tracing | Arize Phoenix + OpenTelemetry OTLP | Per-request LLM traces, latency, and token counts at http://localhost:6006 |
 | Images | Gemini Flash (Plan 02) | Generated persona avatars and industry background images |
@@ -90,7 +90,10 @@ Copy `.env.example` → `.env` and fill in the following:
 | `GROQ_API_KEY` | Groq API key (primary LLM — Llama 4 Maverick) | https://console.groq.com/keys |
 | `GEMINI_API_KEY` | Google Gemini API key (fallback LLM + image generation) | https://aistudio.google.com/app/apikey |
 | `MISTRAL_API_KEY` | Mistral API key (secondary fallback) | https://console.mistral.ai/api-keys/ |
-| `SUPABASE_DB_URI` | PostgreSQL connection string from Supabase | Supabase Dashboard → Settings → Database → Connection string (URI) |
+| `DATABASE_URL` | Neon pooled PostgreSQL connection string | Neon console → Project → Connection string |
+| `DATABASE_DIRECT_URL` | Neon direct PostgreSQL connection (for migrations) | Neon console → Project → Direct connection |
+| `CLERK_JWKS_URL` | Clerk JWKS public key URL for token verification | Clerk dashboard → API Keys → JWKS Public Key URL |
+| `CLERK_ISSUER` | Clerk issuer URL for token claims validation | Clerk dashboard → API Keys section |
 | `PHOENIX_HOST` | Phoenix tracing host (optional, defaults to localhost) | Leave blank for local dev |
 
 ---
