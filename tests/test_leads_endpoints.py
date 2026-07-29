@@ -96,8 +96,7 @@ def client(monkeypatch):
 
     JWT auth is bypassed by overriding get_business_id_from_token to return VALID_BID.
     """
-    monkeypatch.setenv("SUPABASE_DIRECT_URL", "postgresql://test:test@localhost/test")
-    monkeypatch.setenv("SUPABASE_DB_URI", "")
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test:test@localhost/test")
 
     with patch("psycopg.AsyncConnection.connect", return_value=_make_mock_conn_leads()):
         from api.main import app, get_business_id_from_token
@@ -113,8 +112,7 @@ def client(monkeypatch):
 @pytest.fixture
 def client_no_db(monkeypatch):
     """TestClient with no DB — exercises no-op graceful degradation path."""
-    monkeypatch.setenv("SUPABASE_DIRECT_URL", "")
-    monkeypatch.setenv("SUPABASE_DB_URI", "")
+    monkeypatch.setenv("DATABASE_URL", "")
 
     with patch("psycopg.AsyncConnection.connect", return_value=_make_mock_conn_empty()):
         from api.main import app, get_business_id_from_token

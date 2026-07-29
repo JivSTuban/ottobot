@@ -7,7 +7,7 @@ Covers:
 - POST /appointments/confirm: valid + invalid thread_id + status check
 
 Uses FastAPI TestClient (synchronous). psycopg is mocked at module level to
-avoid real DB connections. SUPABASE_DIRECT_URL is monkeypatched empty so
+avoid real DB connections. DATABASE_URL is monkeypatched empty so
 lifespan setup_appointment_tables() is a no-op; AsyncPostgresSaver is also
 patched to use InMemorySaver path gracefully.
 
@@ -56,11 +56,10 @@ def _make_mock_conn():
 @pytest.fixture
 def client(monkeypatch):
     """
-    TestClient with mocked psycopg and empty SUPABASE_DIRECT_URL so the
+    TestClient with mocked psycopg and empty DATABASE_URL so the
     lifespan setup_appointment_tables() is a no-op.
     """
-    monkeypatch.setenv("SUPABASE_DIRECT_URL", "")
-    monkeypatch.setenv("SUPABASE_DB_URI", "")
+    monkeypatch.setenv("DATABASE_URL", "")
 
     with patch("psycopg.AsyncConnection.connect", return_value=_make_mock_conn()):
         from api.main import app
@@ -74,8 +73,7 @@ def client_with_db(monkeypatch):
     TestClient where psycopg.AsyncConnection.connect is mocked to return rows,
     used specifically for GET /availability tests.
     """
-    monkeypatch.setenv("SUPABASE_DIRECT_URL", "postgresql://fake:fake@localhost/fake")
-    monkeypatch.setenv("SUPABASE_DB_URI", "")
+    monkeypatch.setenv("DATABASE_URL", "postgresql://fake:fake@localhost/fake")
 
     mock_conn_ctx = _make_mock_conn()
 
@@ -120,8 +118,7 @@ def test_set_availability_invalid_business_id(client):
 
 def test_get_availability_returns_slots(monkeypatch):
     """psycopg fetchall returns 2 rows; response is a list (possibly with slots or fallback)."""
-    monkeypatch.setenv("SUPABASE_DIRECT_URL", "postgresql://fake:fake@localhost/fake")
-    monkeypatch.setenv("SUPABASE_DB_URI", "")
+    monkeypatch.setenv("DATABASE_URL", "postgresql://fake:fake@localhost/fake")
 
     mock_conn_ctx = _make_mock_conn()
 

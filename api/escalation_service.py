@@ -14,6 +14,8 @@ import os
 import httpx
 import psycopg
 
+from api.db import db_uri
+
 logger = logging.getLogger(__name__)
 
 RESEND_API_URL = "https://api.resend.com/emails"
@@ -112,13 +114,13 @@ async def store_escalation(
     conversation_summary: str,
 ) -> None:
     """
-    Insert an escalation event into the Supabase `escalations` table.
+    Insert an escalation event into the escalations table.
 
-    No-ops if neither SUPABASE_DIRECT_URL nor SUPABASE_DB_URI is set.
+    No-ops if DATABASE_URL is not set.
     outcome defaults to 'not_called' — updated by the business owner later.
     """
-    db_uri = os.environ.get("SUPABASE_DIRECT_URL") or os.environ.get("SUPABASE_DB_URI", "")
-    if not db_uri:
+    uri = db_uri()
+    if not uri:
         logger.debug("No DB URI — skipping escalation storage")
         return
 
@@ -127,7 +129,7 @@ async def store_escalation(
     # an uncaught OperationalError here would bubble out of the WebSocket handler
     # and close the live conversation. Log and degrade instead.
     try:
-        async with await psycopg.AsyncConnection.connect(db_uri) as conn:
+        async with await psycopg.AsyncConnection.connect(uri) as conn:
             await conn.execute(
                 """
                 INSERT INTO escalations

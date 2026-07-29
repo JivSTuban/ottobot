@@ -20,7 +20,7 @@ import pytest
 os.environ.setdefault("GROQ_API_KEY", "test")
 os.environ.setdefault("GEMINI_API_KEY", "test")
 os.environ.setdefault("MISTRAL_API_KEY", "test")
-os.environ.setdefault("SUPABASE_DB_URI", "postgresql://test")
+os.environ.setdefault("DATABASE_URL", "postgresql://test")
 
 
 # ---------------------------------------------------------------------------

@@ -324,8 +324,7 @@ async def test_lead_upload_invalid_business_id(monkeypatch):
 @pytest.mark.asyncio
 async def test_lead_upload_sends_greeting_sms(monkeypatch):
     """POST /leads/upload calls send_sms for each valid phone row."""
-    monkeypatch.delenv("SUPABASE_DIRECT_URL", raising=False)
-    monkeypatch.delenv("SUPABASE_DB_URI", raising=False)
+    monkeypatch.delenv("DATABASE_URL", raising=False)
     monkeypatch.setenv("OUTBOUND_GREETING", "Hello test!")
 
     from api.main import app
@@ -355,8 +354,7 @@ async def test_lead_upload_sends_greeting_sms(monkeypatch):
 @pytest.mark.asyncio
 async def test_lead_form_webhook_ingests_lead(monkeypatch):
     """POST /webhook/lead-form sends greeting SMS for each inbound lead."""
-    monkeypatch.delenv("SUPABASE_DIRECT_URL", raising=False)
-    monkeypatch.delenv("SUPABASE_DB_URI", raising=False)
+    monkeypatch.delenv("DATABASE_URL", raising=False)
     monkeypatch.setenv("BUSINESS_ID", "")
     monkeypatch.setenv("OUTBOUND_GREETING", "Hi from OttoBot!")
 

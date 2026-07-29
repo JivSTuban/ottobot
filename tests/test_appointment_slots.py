@@ -110,7 +110,6 @@ def test_tagalog_format_prefix():
 
 async def test_get_available_slots_empty_uri(monkeypatch):
     """With no DB env vars set, get_available_slots returns [] without raising."""
-    monkeypatch.delenv("SUPABASE_DIRECT_URL", raising=False)
-    monkeypatch.delenv("SUPABASE_DB_URI", raising=False)
+    monkeypatch.delenv("DATABASE_URL", raising=False)
     result = await get_available_slots("00000000-0000-4000-a000-000000000001")
     assert result == []

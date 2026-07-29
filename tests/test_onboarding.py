@@ -57,8 +57,7 @@ async def test_onboarding_preview_invalid_industry():
 @pytest.mark.asyncio
 async def test_onboarding_submit_no_db(monkeypatch):
     """POST /onboarding/submit returns ok with mock business_id when no DB."""
-    monkeypatch.delenv("SUPABASE_DIRECT_URL", raising=False)
-    monkeypatch.delenv("SUPABASE_DB_URI", raising=False)
+    monkeypatch.delenv("DATABASE_URL", raising=False)
 
     from api.main import app
 
@@ -101,7 +100,7 @@ async def test_onboarding_submit_invalid_email():
 @pytest.mark.asyncio
 async def test_onboarding_submit_stores_to_db(monkeypatch):
     """POST /onboarding/submit executes INSERT when DB URI is set."""
-    monkeypatch.setenv("SUPABASE_DIRECT_URL", "postgresql://test:test@localhost/test")
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test:test@localhost/test")
 
     mock_id = uuid.uuid4()
     mock_cursor = AsyncMock()

@@ -59,10 +59,9 @@ def client(monkeypatch):
     TestClient with mocked psycopg and JWT auth dependency overridden.
 
     JWT auth is bypassed by overriding get_business_id_from_token to return VALID_BID.
-    SUPABASE_DIRECT_URL is set so DB path is exercised (psycopg mocked).
+    DATABASE_URL is set so DB path is exercised (psycopg mocked).
     """
-    monkeypatch.setenv("SUPABASE_DIRECT_URL", "postgresql://test:test@localhost/test")
-    monkeypatch.setenv("SUPABASE_DB_URI", "")
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test:test@localhost/test")
 
     with patch("psycopg.AsyncConnection.connect", return_value=_make_mock_conn()):
         from api.main import app, get_business_id_from_token
@@ -78,8 +77,7 @@ def client(monkeypatch):
 @pytest.fixture
 def client_no_db(monkeypatch):
     """TestClient with no DB configured — exercises the no-op path."""
-    monkeypatch.setenv("SUPABASE_DIRECT_URL", "")
-    monkeypatch.setenv("SUPABASE_DB_URI", "")
+    monkeypatch.setenv("DATABASE_URL", "")
 
     with patch("psycopg.AsyncConnection.connect", return_value=_make_mock_conn()):
         from api.main import app, get_business_id_from_token
@@ -113,7 +111,7 @@ def test_push_send_invalid_token_format(client):
 
 
 def test_push_send_no_db(client_no_db):
-    """No SUPABASE_DIRECT_URL configured → 200, stored=False (graceful no-op)."""
+    """No DATABASE_URL configured → 200, stored=False (graceful no-op)."""
     resp = client_no_db.post("/push/send", json={"expo_token": VALID_TOKEN})
     assert resp.status_code == 200
     data = resp.json()

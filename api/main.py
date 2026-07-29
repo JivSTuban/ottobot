@@ -21,6 +21,7 @@ from pydantic import BaseModel
 
 from agent.graph import builder
 from api.connection_manager import ConnectionManager
+from api.db import db_uri, direct_db_uri
 
 logger = logging.getLogger(__name__)
 
@@ -72,11 +73,11 @@ async def get_business_id_from_token(
     if not owner_email:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-    db_uri = os.environ.get("SUPABASE_DIRECT_URL") or os.environ.get("SUPABASE_DB_URI", "")
-    if not db_uri:
+    uri = db_uri()
+    if not uri:
         raise HTTPException(status_code=401, detail="Business not found for this token")
 
-    async with await psycopg.AsyncConnection.connect(db_uri) as conn:
+    async with await psycopg.AsyncConnection.connect(uri) as conn:
         cursor = await conn.execute(
             "SELECT id FROM businesses WHERE owner_email = %s LIMIT 1",
             (owner_email,),
@@ -125,10 +126,10 @@ async def setup_escalation_tables() -> None:
     Called from lifespan after setup_appointment_tables().
     No-ops when DB URI is absent (test environments).
     """
-    db_uri = os.environ.get("SUPABASE_DIRECT_URL") or os.environ.get("SUPABASE_DB_URI", "")
-    if not db_uri:
+    uri = direct_db_uri()
+    if not uri:
         return
-    async with await psycopg.AsyncConnection.connect(db_uri) as conn:
+    async with await psycopg.AsyncConnection.connect(uri) as conn:
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS escalations (
                 id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -151,10 +152,10 @@ async def setup_onboarding_tables() -> None:
     Called from lifespan after setup_channel_tables().
     No-ops when DB URI is absent (test environments).
     """
-    db_uri = os.environ.get("SUPABASE_DIRECT_URL") or os.environ.get("SUPABASE_DB_URI", "")
-    if not db_uri:
+    uri = direct_db_uri()
+    if not uri:
         return
-    async with await psycopg.AsyncConnection.connect(db_uri) as conn:
+    async with await psycopg.AsyncConnection.connect(uri) as conn:
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS businesses (
                 id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -178,10 +179,10 @@ async def setup_channel_tables() -> None:
     Called from lifespan after setup_escalation_tables().
     No-ops when DB URI is absent (test environments).
     """
-    db_uri = os.environ.get("SUPABASE_DIRECT_URL") or os.environ.get("SUPABASE_DB_URI", "")
-    if not db_uri:
+    uri = direct_db_uri()
+    if not uri:
         return
-    async with await psycopg.AsyncConnection.connect(db_uri) as conn:
+    async with await psycopg.AsyncConnection.connect(uri) as conn:
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS leads (
                 id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -212,15 +213,15 @@ async def setup_appointment_tables() -> None:
     Idempotently create business_availability and appointments tables.
 
     Uses CREATE TABLE IF NOT EXISTS — safe to call on every startup.
-    No-ops when SUPABASE_DIRECT_URL and SUPABASE_DB_URI are both unset
-    (e.g. test environments). Never logs the db_uri value (T-02-06).
+    No-ops when DATABASE_URL and DATABASE_DIRECT_URL are both unset
+    (e.g. test environments). Never logs the uri value (T-02-06).
 
     Call from lifespan after checkpointer.setup().
     """
-    db_uri = os.environ.get("SUPABASE_DIRECT_URL") or os.environ.get("SUPABASE_DB_URI", "")
-    if not db_uri:
+    uri = direct_db_uri()
+    if not uri:
         return  # graceful: no-op in test environments without DB
-    async with await psycopg.AsyncConnection.connect(db_uri) as conn:
+    async with await psycopg.AsyncConnection.connect(uri) as conn:
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS business_availability (
                 id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -311,16 +312,13 @@ async def lifespan(app: FastAPI):
 
     from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
-    db_uri = (
-        os.environ.get("SUPABASE_DIRECT_URL")  # direct connection (port 5432) — bypasses pgbouncer DNS lag
-        or os.environ.get("SUPABASE_DB_URI", "")  # pooler (port 6543) — fallback
-    )
+    uri = direct_db_uri()
     logger.info(
         "Connecting to Postgres via: %s",
-        (db_uri[:40] + "…") if len(db_uri) > 40 else db_uri,
+        (uri[:40] + "…") if len(uri) > 40 else uri,
     )
     try:
-        async with AsyncPostgresSaver.from_conn_string(db_uri) as checkpointer:
+        async with AsyncPostgresSaver.from_conn_string(uri) as checkpointer:
             await checkpointer.setup()
             await setup_appointment_tables()
             await setup_escalation_tables()
@@ -375,11 +373,11 @@ async def set_availability(req: AvailabilityRequest):
         if slot.day_of_week not in range(7):
             raise HTTPException(status_code=400, detail="day_of_week must be between 0 and 6")
 
-    db_uri = os.environ.get("SUPABASE_DIRECT_URL") or os.environ.get("SUPABASE_DB_URI", "")
-    if not db_uri:
+    uri = db_uri()
+    if not uri:
         return {"status": "ok", "upserted": len(req.slots)}
 
-    async with await psycopg.AsyncConnection.connect(db_uri) as conn:
+    async with await psycopg.AsyncConnection.connect(uri) as conn:
         for slot in req.slots:
             await conn.execute(
                 """
@@ -407,11 +405,11 @@ async def get_availability(business_id: str):
 
     from agent.slots import FALLBACK_PHRASE, compute_next_slots, format_slot_tagalog
 
-    db_uri = os.environ.get("SUPABASE_DIRECT_URL") or os.environ.get("SUPABASE_DB_URI", "")
-    if not db_uri:
+    uri = db_uri()
+    if not uri:
         return {"slots": [], "fallback": FALLBACK_PHRASE}
 
-    async with await psycopg.AsyncConnection.connect(db_uri) as conn:
+    async with await psycopg.AsyncConnection.connect(uri) as conn:
         cursor = await conn.execute(
             "SELECT day_of_week, start_time, end_time FROM business_availability WHERE business_id = %s",
             (business_id,),
@@ -456,11 +454,11 @@ async def confirm_appointment(req: ConfirmAppointmentRequest):
     if not validate_business_id(req.business_id):
         raise HTTPException(status_code=400, detail="business_id must be a valid UUID v4")
 
-    db_uri = os.environ.get("SUPABASE_DIRECT_URL") or os.environ.get("SUPABASE_DB_URI", "")
-    if not db_uri:
+    uri = db_uri()
+    if not uri:
         return {"status": "confirmed", "thread_id": req.thread_id}
 
-    async with await psycopg.AsyncConnection.connect(db_uri) as conn:
+    async with await psycopg.AsyncConnection.connect(uri) as conn:
         await conn.execute(
             """
             INSERT INTO appointments (thread_id, business_id, proposed_time, status)
@@ -657,7 +655,7 @@ async def upload_leads(
     content = await file.read()
     reader = csv.DictReader(io.StringIO(content.decode("utf-8")))
 
-    db_uri = os.environ.get("SUPABASE_DIRECT_URL") or os.environ.get("SUPABASE_DB_URI", "")
+    uri = db_uri()
     industry = os.environ.get("DEFAULT_INDUSTRY", "dental")
 
     upserted: int = 0
@@ -667,8 +665,8 @@ async def upload_leads(
             continue
         name = (row.get("name") or "").strip()
 
-        if db_uri:
-            async with await psycopg.AsyncConnection.connect(db_uri) as conn:
+        if uri:
+            async with await psycopg.AsyncConnection.connect(uri) as conn:
                 await conn.execute(
                     """
                     INSERT INTO leads (phone, name, source, business_id, status)
@@ -707,7 +705,7 @@ async def lead_form_webhook(payload: LeadFormWebhookRequest):
 
     business_id = os.environ.get("BUSINESS_ID", "")
     industry = os.environ.get("DEFAULT_INDUSTRY", "dental")
-    db_uri = os.environ.get("SUPABASE_DIRECT_URL") or os.environ.get("SUPABASE_DB_URI", "")
+    uri = db_uri()
 
     ingested: int = 0
     for entry in payload.entry:
@@ -722,8 +720,8 @@ async def lead_form_webhook(payload: LeadFormWebhookRequest):
                 if not phone:
                     continue
 
-                if db_uri:
-                    async with await psycopg.AsyncConnection.connect(db_uri) as conn:
+                if uri:
+                    async with await psycopg.AsyncConnection.connect(uri) as conn:
                         await conn.execute(
                             """
                             INSERT INTO leads (phone, name, source, business_id, status)
@@ -809,11 +807,11 @@ async def onboarding_submit(data: OnboardingData):
     if not data.owner_email or "@" not in data.owner_email:
         raise HTTPException(status_code=400, detail="Invalid owner_email")
 
-    db_uri = os.environ.get("SUPABASE_DIRECT_URL") or os.environ.get("SUPABASE_DB_URI", "")
-    if not db_uri:
+    uri = db_uri()
+    if not uri:
         return {"status": "ok", "business_id": str(uuid.uuid4())}
 
-    async with await psycopg.AsyncConnection.connect(db_uri) as conn:
+    async with await psycopg.AsyncConnection.connect(uri) as conn:
         cursor = await conn.execute(
             """
             INSERT INTO businesses (owner_email, name, industry, phone, city, services, pricing)
@@ -856,10 +854,10 @@ async def setup_push_token_table() -> None:
     Called from lifespan after setup_onboarding_tables().
     No-ops when DB URI is absent (test environments).
     """
-    db_uri = os.environ.get("SUPABASE_DIRECT_URL") or os.environ.get("SUPABASE_DB_URI", "")
-    if not db_uri:
+    uri = direct_db_uri()
+    if not uri:
         return
-    async with await psycopg.AsyncConnection.connect(db_uri) as conn:
+    async with await psycopg.AsyncConnection.connect(uri) as conn:
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS business_push_tokens (
                 id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -882,11 +880,11 @@ async def get_leads(business_id: str = Depends(get_business_id_from_token)):
     if not validate_business_id(business_id):
         raise HTTPException(status_code=400, detail="business_id must be a valid UUID v4")
 
-    db_uri = os.environ.get("SUPABASE_DIRECT_URL") or os.environ.get("SUPABASE_DB_URI", "")
-    if not db_uri:
+    uri = db_uri()
+    if not uri:
         return {"leads": [], "grouped": {}}
 
-    async with await psycopg.AsyncConnection.connect(db_uri) as conn:
+    async with await psycopg.AsyncConnection.connect(uri) as conn:
         cursor = await conn.execute(
             "SELECT id, phone, status, created_at FROM leads WHERE business_id = %s ORDER BY created_at DESC",
             (business_id,),
@@ -918,13 +916,13 @@ async def get_lead_messages(
     if not validate_thread_id(lead_id):
         raise HTTPException(status_code=400, detail="lead_id must be a valid UUID v4")
 
-    db_uri = os.environ.get("SUPABASE_DIRECT_URL") or os.environ.get("SUPABASE_DB_URI", "")
-    if not db_uri:
+    uri = db_uri()
+    if not uri:
         return {"messages": []}
 
     from api.channels import deterministic_thread_id
 
-    async with await psycopg.AsyncConnection.connect(db_uri) as conn:
+    async with await psycopg.AsyncConnection.connect(uri) as conn:
         # Ownership check: verify lead belongs to authenticated business
         lead_cursor = await conn.execute(
             "SELECT phone FROM leads WHERE id = %s AND business_id = %s LIMIT 1",
@@ -975,11 +973,11 @@ async def register_push_token(
     ):
         raise HTTPException(status_code=422, detail="Invalid Expo push token format")
 
-    db_uri = os.environ.get("SUPABASE_DIRECT_URL") or os.environ.get("SUPABASE_DB_URI", "")
-    if not db_uri:
+    uri = db_uri()
+    if not uri:
         return {"status": "ok", "stored": False}
 
-    async with await psycopg.AsyncConnection.connect(db_uri) as conn:
+    async with await psycopg.AsyncConnection.connect(uri) as conn:
         await conn.execute(
             """
             INSERT INTO business_push_tokens (id, business_id, expo_token, created_at)

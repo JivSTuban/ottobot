@@ -100,8 +100,7 @@ async def test_send_escalation_email_handles_network_error(monkeypatch):
 @pytest.mark.asyncio
 async def test_store_escalation_no_db(monkeypatch):
     """No-op when no DB URI is configured."""
-    monkeypatch.delenv("SUPABASE_DIRECT_URL", raising=False)
-    monkeypatch.delenv("SUPABASE_DB_URI", raising=False)
+    monkeypatch.delenv("DATABASE_URL", raising=False)
 
     from api.escalation_service import store_escalation
 
@@ -113,7 +112,7 @@ async def test_store_escalation_no_db(monkeypatch):
 @pytest.mark.asyncio
 async def test_store_escalation_inserts_row(monkeypatch):
     """Executes INSERT when DB URI is set."""
-    monkeypatch.setenv("SUPABASE_DIRECT_URL", "postgresql://test:test@localhost/test")
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test:test@localhost/test")
 
     mock_conn = AsyncMock()
     mock_conn.__aenter__ = AsyncMock(return_value=mock_conn)
@@ -140,7 +139,7 @@ async def test_store_escalation_survives_db_failure(monkeypatch):
     """A dead/unreachable DB must NOT propagate — the live WebSocket conversation
     stays alive; persisting the escalation is best-effort. (Root cause of the
     escalation-time WS drop: an uncaught psycopg.OperationalError.)"""
-    monkeypatch.setenv("SUPABASE_DIRECT_URL", "postgresql://postgres.dead@localhost/test")
+    monkeypatch.setenv("DATABASE_URL", "postgresql://postgres.dead@localhost/test")
 
     import psycopg
 

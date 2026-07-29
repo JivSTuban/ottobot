@@ -18,6 +18,7 @@ from fastapi import WebSocket
 
 import api.main as app_state
 from agent.graph import OUTBOUND_START_MARKER
+from api.db import db_uri, direct_db_uri
 from agent.models import DEMO_PROFILES
 from api.escalation_service import send_escalation_email, send_push_notification, store_escalation
 from api.guardrails import (
@@ -38,12 +39,12 @@ _escalated_threads: set[str] = set()
 
 async def store_appointment(thread_id: str, business_id: str, confirmed_time: str) -> None:
     """Insert a confirmed appointment row into Supabase appointments table."""
-    db_uri = os.environ.get("SUPABASE_DIRECT_URL") or os.environ.get("SUPABASE_DB_URI", "")
-    if not db_uri:
+    uri = db_uri()
+    if not uri:
         return  # no-op in test environments
     # Best-effort: a dead/unreachable DB must not crash the live WebSocket turn.
     try:
-        async with await psycopg.AsyncConnection.connect(db_uri) as conn:
+        async with await psycopg.AsyncConnection.connect(uri) as conn:
             await conn.execute(
                 "INSERT INTO appointments (thread_id, business_id, proposed_time, status) "
                 "VALUES (%s, %s, %s::timestamptz, 'confirmed')",
@@ -266,10 +267,10 @@ async def handle_ws(websocket: WebSocket, thread_id: str) -> None:
                 await send_escalation_email(to_email, lead_phone, conversation_summary)
             # --- Push notification (APP-01) ---
             try:
-                push_db_uri = os.environ.get("SUPABASE_DIRECT_URL") or os.environ.get("SUPABASE_DB_URI", "")
+                push_uri = db_uri()
                 expo_token = ""
-                if push_db_uri:
-                    async with await psycopg.AsyncConnection.connect(push_db_uri) as conn:
+                if push_uri:
+                    async with await psycopg.AsyncConnection.connect(push_uri) as conn:
                         cursor = await conn.execute(
                             "SELECT expo_token FROM business_push_tokens WHERE business_id = %s LIMIT 1",
                             (business_id,),

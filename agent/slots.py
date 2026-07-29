@@ -14,6 +14,8 @@ from datetime import datetime, date, time, timezone, timedelta
 
 import psycopg
 
+from api.db import db_uri
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -133,20 +135,20 @@ async def get_available_slots(business_id: str, days_ahead: int = 7) -> list[dic
     """Fetch business_availability rows from Supabase via psycopg.
 
     Returns list of dicts with keys: day_of_week, start_time, end_time.
-    Returns [] if SUPABASE_DIRECT_URL and SUPABASE_DB_URI are both unset
-    (graceful degradation for unit tests without a DB). (T-02-02: db_uri never logged)
+    Returns [] if DATABASE_URL is not set
+    (graceful degradation for unit tests without a DB). (T-02-02: uri never logged)
 
     Parameterized query — business_id is never string-interpolated. (T-02-01)
     """
-    db_uri = os.environ.get("SUPABASE_DIRECT_URL") or os.environ.get("SUPABASE_DB_URI", "")
-    if not db_uri:
+    uri = db_uri()
+    if not uri:
         return []
 
     # A dead/unreachable DB must degrade to "no slots" (the agent then offers a
     # call-back) rather than raise — an uncaught error here would crash the live
     # WebSocket conversation at the propose_appointment stage.
     try:
-        async with await psycopg.AsyncConnection.connect(db_uri) as conn:
+        async with await psycopg.AsyncConnection.connect(uri) as conn:
             cur = await conn.execute(
                 """
                 SELECT day_of_week, start_time, end_time
