@@ -47,6 +47,16 @@ def _mock_business_conn(row):
     return cm
 
 
+@pytest.fixture(autouse=True)
+def _clear_jwks_cache():
+    # _jwks_client is @lru_cache(maxsize=1); patching does NOT reset it, so a real
+    # client cached by another test could leak in. Clear before and after each test.
+    from api import main
+    main._jwks_client.cache_clear()
+    yield
+    main._jwks_client.cache_clear()
+
+
 async def test_valid_clerk_token_resolves_business_id(monkeypatch):
     priv, pub = _keypair()
     monkeypatch.setenv("CLERK_JWKS_URL", "https://clerk.test/.well-known/jwks.json")

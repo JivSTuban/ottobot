@@ -69,7 +69,9 @@ async def get_business_id_from_token(
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-    owner_email = payload.get("email", "") or payload.get("sub", "")
+    # Clerk `sub` is the Clerk user id (e.g. "user_abc123"), not an email, so it
+    # can never match businesses.owner_email — require the `email` claim explicitly.
+    owner_email = payload.get("email", "")
     if not owner_email:
         raise HTTPException(status_code=401, detail="Invalid token")
 
