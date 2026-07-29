@@ -1,15 +1,15 @@
 import { useEffect } from 'react';
 import { Stack, Redirect } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { useAuth } from '../hooks/useAuth';
+import { ClerkProvider, ClerkLoaded, useAuth } from '@clerk/clerk-expo';
+import { CLERK_PUBLISHABLE_KEY, tokenCache } from '../lib/clerk';
 import { registerForPushNotificationsAsync } from '../lib/pushToken';
-import { supabase } from '../lib/supabase';
 
-export default function RootLayout() {
-  const { session, loading } = useAuth();
+function Gate() {
+  const { isSignedIn, isLoaded, getToken } = useAuth();
 
   useEffect(() => {
-    if (!session || loading) return;
+    if (!isSignedIn || !isLoaded) return;
 
     // Register for push notifications after login; failure must NOT crash the app
     (async () => {
@@ -17,11 +17,12 @@ export default function RootLayout() {
         const token = await registerForPushNotificationsAsync();
         if (token) {
           const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+          const bearer = await getToken();
           await fetch(`${apiUrl}/push/send`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${session.access_token}`,
+              'Authorization': `Bearer ${bearer}`,
             },
             body: JSON.stringify({ expo_token: token }),
           });
@@ -31,15 +32,15 @@ export default function RootLayout() {
         console.error('Push token registration failed:', error);
       }
     })();
-  }, [session, loading]);
+  }, [isSignedIn, isLoaded]);
 
   // Show nothing while loading auth state (splash-screen)
-  if (loading) {
+  if (!isLoaded) {
     return null;
   }
 
   // Redirect unauthenticated users to login
-  if (!session) {
+  if (!isSignedIn) {
     return <Redirect href="/login" />;
   }
 
@@ -56,5 +57,13 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       </Stack>
     </SafeAreaProvider>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} tokenCache={tokenCache}>
+      <ClerkLoaded><Gate /></ClerkLoaded>
+    </ClerkProvider>
   );
 }
