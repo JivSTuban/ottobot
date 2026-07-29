@@ -1,22 +1,13 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  ActivityIndicator,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-} from 'react-native';
+import { StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MotiView, MotiText } from 'moti';
 import { useReducedMotion } from 'react-native-reanimated';
 import { useSignIn } from '@clerk/clerk-expo';
+import { YStack, Input, Button, Text, Spinner } from 'tamagui';
 
-// Design tokens
+// Design tokens (brand — applied as inline props on Tamagui components)
 const TOKENS = {
   bg: '#0f1117',
   accent: '#6366f1',
@@ -27,7 +18,11 @@ const TOKENS = {
   error: '#ef4444',
 } as const;
 
-// Spring presets — ease-out settle only, honor reduced motion via caller
+// Tamagui's Input types `placeholderTextColor` as ColorTokens (theme token strings),
+// but we pass a raw brand hex. The value is valid at runtime; cast to satisfy the type.
+const mutedPlaceholder = TOKENS.muted as unknown as `$${string}`;
+
+// Spring preset — ease-out settle only, honor reduced motion via caller
 const SPRING = { type: 'spring' as const, damping: 20, stiffness: 220 };
 
 function useMotionConfig(reduceMotion: boolean) {
@@ -88,8 +83,10 @@ export default function LoginScreen() {
     }
   }
 
+  const disabled = loading || !isLoaded;
+
   return (
-    <View style={styles.root}>
+    <YStack flex={1} backgroundColor={TOKENS.bg}>
       {/* Hero backdrop with Ken-Burns motion */}
       <MotiView
         from={reduceMotion ? undefined : { scale: 1.06, translateY: 0 }}
@@ -121,7 +118,7 @@ export default function LoginScreen() {
         style={StyleSheet.absoluteFill}
       />
 
-      {/* Radial glow behind wordmark (simulated with a blurred circle) */}
+      {/* Soft indigo glow behind wordmark with slow opacity pulse */}
       {!reduceMotion && (
         <MotiView
           from={{ opacity: 0.12 }}
@@ -135,7 +132,7 @@ export default function LoginScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.kavWrapper}
       >
-        <View style={styles.content}>
+        <YStack flex={1} justifyContent="flex-end" paddingHorizontal={20} paddingBottom={48}>
           {/* Wordmark */}
           <MotiText
             style={styles.wordmark}
@@ -153,99 +150,133 @@ export default function LoginScreen() {
           </MotiText>
 
           {/* Glass card */}
-          <MotiView
-            style={styles.card}
-            {...from(450, { translateY: 40, opacity: 0 })}
-          >
-            {/* Email field */}
-            <MotiView {...from(650, { translateY: 12, opacity: 0 })}>
-              <TextInput
-                style={[styles.input, emailFocused && styles.inputFocused]}
-                placeholder="Email"
-                placeholderTextColor={TOKENS.muted}
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                onFocus={() => setEmailFocused(true)}
-                onBlur={() => setEmailFocused(false)}
-                returnKeyType="next"
-                accessibilityLabel="Email address"
-              />
-            </MotiView>
-
-            {/* Password field */}
-            <MotiView {...from(750, { translateY: 12, opacity: 0 })}>
-              <TextInput
-                style={[styles.input, styles.inputLast, passwordFocused && styles.inputFocused]}
-                placeholder="Password"
-                placeholderTextColor={TOKENS.muted}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                onFocus={() => setPasswordFocused(true)}
-                onBlur={() => setPasswordFocused(false)}
-                returnKeyType="done"
-                onSubmitEditing={handleLogin}
-                accessibilityLabel="Password"
-              />
-            </MotiView>
-
-            {/* Inline error */}
-            {error !== null && (
-              <Text style={styles.errorText} accessibilityRole="alert">
-                {error}
-              </Text>
-            )}
-
-            {/* Gradient CTA button */}
-            <MotiView {...from(900, { translateY: 12, opacity: 0 })}>
-              <TouchableOpacity
-                onPress={handleLogin}
-                disabled={loading || !isLoaded}
-                accessibilityRole="button"
-                accessibilityLabel="Log in"
-                activeOpacity={0.85}
-              >
-                <LinearGradient
-                  colors={[TOKENS.accent, TOKENS.accentEnd]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={[styles.loginButton, (loading || !isLoaded) && styles.loginButtonDisabled]}
-                >
-                  {loading ? (
-                    <ActivityIndicator color={TOKENS.text} />
-                  ) : (
-                    <Text style={styles.loginButtonText}>Log in</Text>
-                  )}
-                </LinearGradient>
-              </TouchableOpacity>
-            </MotiView>
-
-            {/* Forgot password link */}
-            <Pressable
-              style={styles.forgotWrap}
-              accessibilityRole="link"
-              accessibilityLabel="Forgot password"
-              onPress={() => {
-                // TODO Phase 07: wire forgot-password flow
-              }}
+          <MotiView {...from(450, { translateY: 40, opacity: 0 })}>
+            <YStack
+              backgroundColor="rgba(26,29,39,0.88)"
+              borderRadius={20}
+              padding={20}
+              borderWidth={1}
+              borderColor="rgba(99,102,241,0.18)"
+              gap={10}
             >
-              <Text style={styles.forgotText}>Forgot password?</Text>
-            </Pressable>
+              {/* Email field (Tamagui Input) */}
+              <MotiView {...from(650, { translateY: 12, opacity: 0 })}>
+                <Input
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="Email"
+                  // raw hex brand token; Tamagui types placeholderTextColor narrowly as ColorTokens
+                  placeholderTextColor={mutedPlaceholder}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  returnKeyType="next"
+                  onFocus={() => setEmailFocused(true)}
+                  onBlur={() => setEmailFocused(false)}
+                  aria-label="Email address"
+                  backgroundColor={TOKENS.surface}
+                  color={TOKENS.text}
+                  borderRadius={10}
+                  borderWidth={1.5}
+                  borderColor={emailFocused ? TOKENS.accent : 'transparent'}
+                  height={48}
+                  fontSize={15}
+                />
+              </MotiView>
+
+              {/* Password field (Tamagui Input) */}
+              <MotiView {...from(750, { translateY: 12, opacity: 0 })}>
+                <Input
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="Password"
+                  // raw hex brand token; Tamagui types placeholderTextColor narrowly as ColorTokens
+                  placeholderTextColor={mutedPlaceholder}
+                  secureTextEntry
+                  returnKeyType="done"
+                  onSubmitEditing={handleLogin}
+                  onFocus={() => setPasswordFocused(true)}
+                  onBlur={() => setPasswordFocused(false)}
+                  aria-label="Password"
+                  backgroundColor={TOKENS.surface}
+                  color={TOKENS.text}
+                  borderRadius={10}
+                  borderWidth={1.5}
+                  borderColor={passwordFocused ? TOKENS.accent : 'transparent'}
+                  height={48}
+                  fontSize={15}
+                />
+              </MotiView>
+
+              {/* Inline error */}
+              {error !== null && (
+                <Text
+                  color={TOKENS.error}
+                  fontSize={12}
+                  fontWeight="600"
+                  role="alert"
+                >
+                  {error}
+                </Text>
+              )}
+
+              {/* Gradient CTA (Tamagui Button, transparent, gradient behind) */}
+              <MotiView {...from(900, { translateY: 12, opacity: 0 })}>
+                <Button
+                  onPress={handleLogin}
+                  disabled={disabled}
+                  aria-label="Log in"
+                  height={50}
+                  borderRadius={12}
+                  marginTop={6}
+                  backgroundColor="transparent"
+                  borderWidth={0}
+                  opacity={disabled ? 0.6 : 1}
+                  pressStyle={{ opacity: 0.85, backgroundColor: 'transparent' }}
+                  overflow="hidden"
+                >
+                  <LinearGradient
+                    colors={[TOKENS.accent, TOKENS.accentEnd]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={StyleSheet.absoluteFill}
+                  />
+                  {loading ? (
+                    <Spinner color={TOKENS.text} />
+                  ) : (
+                    <Text color={TOKENS.text} fontSize={15} fontWeight="700" letterSpacing={0.3}>
+                      Log in
+                    </Text>
+                  )}
+                </Button>
+              </MotiView>
+
+              {/* Forgot password link (Tamagui Button, chromeless) */}
+              <Button
+                chromeless
+                onPress={() => {
+                  // TODO Phase 07: wire forgot-password flow
+                }}
+                aria-label="Forgot password"
+                height="auto"
+                paddingVertical={8}
+                marginTop={4}
+                backgroundColor="transparent"
+                pressStyle={{ backgroundColor: 'transparent', opacity: 0.6 }}
+              >
+                <Text color={TOKENS.muted} fontSize={13}>
+                  Forgot password?
+                </Text>
+              </Button>
+            </YStack>
           </MotiView>
-        </View>
+        </YStack>
       </KeyboardAvoidingView>
-    </View>
+    </YStack>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: TOKENS.bg,
-  },
   kavWrapper: {
     flex: 1,
   },
@@ -257,14 +288,8 @@ const styles = StyleSheet.create({
     height: 240,
     borderRadius: 120,
     backgroundColor: TOKENS.accent,
-    // React Native doesn't support blur natively without expo-blur; approximate with opacity
+    // No native blur without expo-blur; approximate the glow with low opacity
     opacity: 0.18,
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    paddingHorizontal: 20,
-    paddingBottom: 48,
   },
   wordmark: {
     fontSize: 36,
@@ -280,59 +305,5 @@ const styles = StyleSheet.create({
     color: TOKENS.muted,
     textAlign: 'center',
     marginBottom: 28,
-  },
-  card: {
-    backgroundColor: 'rgba(26,29,39,0.88)',
-    borderRadius: 20,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(99,102,241,0.18)',
-  },
-  input: {
-    backgroundColor: TOKENS.surface,
-    color: TOKENS.text,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 13,
-    fontSize: 15,
-    marginBottom: 10,
-    borderWidth: 1.5,
-    borderColor: 'transparent',
-  },
-  inputLast: {
-    marginBottom: 0,
-  },
-  inputFocused: {
-    borderColor: TOKENS.accent,
-  },
-  errorText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: TOKENS.error,
-    marginTop: 10,
-  },
-  loginButton: {
-    minHeight: 50,
-    borderRadius: 12,
-    marginTop: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loginButtonDisabled: {
-    opacity: 0.6,
-  },
-  loginButtonText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: TOKENS.text,
-    letterSpacing: 0.3,
-  },
-  forgotWrap: {
-    marginTop: 14,
-    alignItems: 'center',
-  },
-  forgotText: {
-    fontSize: 13,
-    color: TOKENS.muted,
   },
 });

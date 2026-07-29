@@ -2,6 +2,8 @@ import { useEffect } from 'react';
 import { Stack, Redirect } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ClerkProvider, ClerkLoaded, useAuth } from '@clerk/clerk-expo';
+import { TamaguiProvider } from 'tamagui';
+import tamaguiConfig from '../tamagui.config';
 import { CLERK_PUBLISHABLE_KEY, tokenCache } from '../lib/clerk';
 import { registerForPushNotificationsAsync } from '../lib/pushToken';
 
@@ -63,7 +65,9 @@ function Gate() {
 export default function RootLayout() {
   return (
     <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} tokenCache={tokenCache}>
-      <ClerkLoaded><Gate /></ClerkLoaded>
+      <TamaguiProvider config={tamaguiConfig} defaultTheme="dark">
+        <ClerkLoaded><Gate /></ClerkLoaded>
+      </TamaguiProvider>
     </ClerkProvider>
   );
 }

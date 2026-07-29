@@ -147,3 +147,53 @@ Visual confirmation requires running on a device or simulator. The entrance anim
 - `mobile/lib/supabase.ts` — new stub
 - `mobile/package.json` — new deps added
 - `mobile/package-lock.json` — updated
+
+---
+---
+
+# Fix Report: Migration to Tamagui (no babel optimizer)
+
+**Date:** 2026-07-29 (follow-up)  
+**Change:** Per user requirement, migrated the login **form primitives** to **Tamagui** components while keeping everything else from the Moti+RN-core version (expo-image hero, Moti entrance motion, Clerk useSignIn flow, English copy, gradient CTA, glow pulse, reduced-motion gate).
+
+## Tamagui setup used
+
+- **Packages installed:** `tamagui@^2.6.0`, `@tamagui/config@^2.6.0` (both `--legacy-peer-deps`), plus `react-native-web@^0.21.2` (a hard peer dep — Tamagui unconditionally imports it in some views like `Anchor`; without it Metro/node resolution fails).
+- **`tamagui.config.ts`** (new): `import { defaultConfig } from '@tamagui/config/v4'` → `createTamagui(...)`. Note the v4 export is named **`defaultConfig`**, NOT `config` (the coordinator's suggested `import { config }` name does not exist in `@tamagui/config@2.6.0`). Added the `declare module 'tamagui'` TS augmentation.
+  - Two v4 default settings were relaxed so we could pass **longhand style props** and **raw brand hex** directly on components: `onlyAllowShorthands: false` and `allowedStyleValues: false`. (v4 defaults to `onlyAllowShorthands: true` + `allowedStyleValues: 'somewhat-strict-web'`, which reject `backgroundColor`/`justifyContent` longhands and non-token hex values.)
+- **NO `@tamagui/babel-plugin`** was added — confirmed the fix. `babel.config.js` is unchanged: `babel-preset-expo` preset + `react-native-reanimated/plugin` (last). Tamagui components work at runtime without the optimizer plugin. This is what removed the Expo SDK 56 babel-ordering conflict.
+- **No `metro.config.js` / `@tamagui/metro-plugin` needed.** The `expo export` bundle succeeded WITHOUT any metro plugin — so it was not added (YAGNI).
+
+## Component mapping (RN-core → Tamagui)
+
+| Before (RN core) | After (Tamagui) |
+|---|---|
+| `View` root / content / card | `YStack` (flex/justify/padding via props) |
+| `TextInput` email + password | `Input` (bg/border/height/focus-border via props) |
+| `TouchableOpacity` + `LinearGradient` CTA | `Button` (transparent, `overflow="hidden"`) with `LinearGradient` absolute-filled behind + `Spinner` for loading |
+| `Text` (error, button label, forgot link) | Tamagui `Text` |
+| `Pressable` forgot-password | `Button chromeless` |
+
+**Unchanged:** expo-image Ken-Burns hero (MotiView), the LinearGradient scrim, the indigo glow pulse, all Moti spring reveal delays (wordmark 150 / tagline 300 / card 450 / email 650 / password 750 / CTA 900ms), `useReducedMotion()` gate, Clerk `useSignIn` + `setActive`, and the English copy/errors. `MotiView` wraps the Tamagui components with no issue.
+
+One small type accommodation: Tamagui's `Input` types `placeholderTextColor` as `ColorTokens` (theme-token strings only), so the raw brand hex `#94a3b8` is passed via a centralized `mutedPlaceholder` cast const — runtime value is preserved.
+
+## Gate results (Tamagui)
+
+- **`npx tsc --noEmit`**: `login.tsx` and `tamagui.config.ts` are **error-free**. The only residual errors are the same 5 pre-existing ones in the unmigrated `settings.tsx` / `pipeline.tsx` / `conversation/[id].tsx` (`.session` on useAuth + the supabase-stub type gaps). Within spec.
+- **`npx expo export --platform ios`**: **PASS — clean bundle.** `iOS Bundled 5620ms node_modules/expo-router/entry.js (2536 modules)` (up from 2074 pre-Tamagui — the delta is Tamagui's runtime). HBC output produced (6.9MB). Output dir deleted after. **This is the real proof that Tamagui-without-babel-plugin bundles cleanly on Expo SDK 56.**
+
+## Files changed (this fix)
+
+- `mobile/tamagui.config.ts` — new (createTamagui from v4 defaultConfig, relaxed shorthand/value settings)
+- `mobile/app/_layout.tsx` — `TamaguiProvider config={tamaguiConfig} defaultTheme="dark"` wrapping inside `ClerkProvider`
+- `mobile/app/login.tsx` — form primitives replaced with Tamagui `YStack`/`Input`/`Button`/`Text`/`Spinner`
+- `mobile/package.json` + `package-lock.json` — added `tamagui`, `@tamagui/config`, `react-native-web`
+- `mobile/babel.config.js` — **unchanged** (no Tamagui plugin, by design)
+
+## Concerns
+
+- **No visual verification** (no simulator): gates remain tsc + a clean Metro bundle only. The Tamagui `Input` focus-border, gradient `Button`, and glass `YStack` should render per props, but on-device confirmation is still pending.
+- **`allowedStyleValues: false`** disables Tamagui's compile/runtime style-value validation globally. That is the intended trade-off to use raw brand hex freely; it slightly reduces Tamagui's guardrails. A future pass could migrate the brand palette into the Tamagui theme tokens and re-enable stricter validation.
+- **`react-native-web`** is now a dependency even though this is a native-only app — it is a mandatory Tamagui peer, not optional.
+- The `lib/supabase.ts` stub and the added Clerk peer deps (`expo-auth-session`, `expo-web-browser`, `react-dom`) from the first pass are retained — still required for a clean bundle until Task 7 migrates the tab screens.
