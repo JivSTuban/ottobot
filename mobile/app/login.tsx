@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import { StyleSheet, KeyboardAvoidingView, Platform, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MotiView, MotiText } from 'moti';
@@ -118,8 +118,11 @@ export default function LoginScreen() {
         style={StyleSheet.absoluteFill}
       />
 
-      {/* Soft indigo glow behind wordmark with slow opacity pulse */}
-      {!reduceMotion && (
+      {/* Soft indigo glow behind wordmark. Pulses when motion is allowed;
+          reduced-motion keeps the design layer static at its rest opacity (0.2). */}
+      {reduceMotion ? (
+        <View style={[styles.glow, { opacity: 0.2 }]} />
+      ) : (
         <MotiView
           from={{ opacity: 0.12 }}
           animate={{ opacity: 0.28 }}
@@ -136,7 +139,7 @@ export default function LoginScreen() {
           {/* Wordmark */}
           <MotiText
             style={styles.wordmark}
-            {...from(150, { translateY: 26, opacity: 0 })}
+            {...from(0, { translateY: 26, opacity: 0 })}
           >
             OttoBot
           </MotiText>
@@ -144,13 +147,13 @@ export default function LoginScreen() {
           {/* Tagline */}
           <MotiText
             style={styles.tagline}
-            {...from(300, { translateY: 16, opacity: 0 })}
+            {...from(70, { translateY: 16, opacity: 0 })}
           >
             Manage your leads.
           </MotiText>
 
           {/* Glass card */}
-          <MotiView {...from(450, { translateY: 40, opacity: 0 })}>
+          <MotiView {...from(140, { translateY: 40, opacity: 0 })}>
             <YStack
               backgroundColor="rgba(26,29,39,0.88)"
               borderRadius={20}
@@ -160,7 +163,7 @@ export default function LoginScreen() {
               gap={10}
             >
               {/* Email field (Tamagui Input) */}
-              <MotiView {...from(650, { translateY: 12, opacity: 0 })}>
+              <MotiView {...from(210, { translateY: 12, opacity: 0 })}>
                 <Input
                   value={email}
                   onChangeText={setEmail}
@@ -185,7 +188,7 @@ export default function LoginScreen() {
               </MotiView>
 
               {/* Password field (Tamagui Input) */}
-              <MotiView {...from(750, { translateY: 12, opacity: 0 })}>
+              <MotiView {...from(280, { translateY: 12, opacity: 0 })}>
                 <Input
                   value={password}
                   onChangeText={setPassword}
@@ -221,7 +224,7 @@ export default function LoginScreen() {
               )}
 
               {/* Gradient CTA (Tamagui Button, transparent, gradient behind) */}
-              <MotiView {...from(900, { translateY: 12, opacity: 0 })}>
+              <MotiView {...from(350, { translateY: 12, opacity: 0 })}>
                 <Button
                   onPress={handleLogin}
                   disabled={disabled}
@@ -232,7 +235,7 @@ export default function LoginScreen() {
                   backgroundColor="transparent"
                   borderWidth={0}
                   opacity={disabled ? 0.6 : 1}
-                  pressStyle={{ opacity: 0.85, backgroundColor: 'transparent' }}
+                  pressStyle={{ opacity: 0.85, backgroundColor: 'transparent', scale: 0.97 }}
                   overflow="hidden"
                 >
                   <LinearGradient
@@ -262,7 +265,7 @@ export default function LoginScreen() {
                 paddingVertical={8}
                 marginTop={4}
                 backgroundColor="transparent"
-                pressStyle={{ backgroundColor: 'transparent', opacity: 0.6 }}
+                pressStyle={{ backgroundColor: 'transparent', opacity: 0.6, scale: 0.98 }}
               >
                 <Text color={TOKENS.muted} fontSize={13}>
                   Forgot password?

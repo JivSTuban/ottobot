@@ -197,3 +197,19 @@ One small type accommodation: Tamagui's `Input` types `placeholderTextColor` as 
 - **`allowedStyleValues: false`** disables Tamagui's compile/runtime style-value validation globally. That is the intended trade-off to use raw brand hex freely; it slightly reduces Tamagui's guardrails. A future pass could migrate the brand palette into the Tamagui theme tokens and re-enable stricter validation.
 - **`react-native-web`** is now a dependency even though this is a native-only app — it is a mandatory Tamagui peer, not optional.
 - The `lib/supabase.ts` stub and the added Clerk peer deps (`expo-auth-session`, `expo-web-browser`, `react-dom`) from the first pass are retained — still required for a clean bundle until Task 7 migrates the tab screens.
+
+---
+---
+
+# Fix Report: emil-design-eng craft pass
+
+**Date:** 2026-07-29 (follow-up 2)  
+**Scope:** `mobile/app/login.tsx` only. 3 changes, transform+opacity only, no new deps.
+
+1. **Tighter entrance stagger.** Retimed the reveal delays from 150/300/450/650/750/900ms to snappy 30–80ms gaps: wordmark **0**, tagline **70**, card **140**, email **210**, password **280**, CTA **350** (ms). Same spring preset (damping 20 / stiffness 220). Net settle drops from ~1.3s to ~0.7s.
+2. **Scale press feedback.** Added `scale: 0.97` to the Log-in `Button` `pressStyle` (alongside existing opacity 0.85), and `scale: 0.98` to the "Forgot password?" chromeless button `pressStyle`. Button now physically depresses on press.
+3. **Static reduced-motion glow.** Replaced the `{!reduceMotion && <MotiView.../>}` removal with a branch: when `reduceMotion` is true, render the glow as a plain `View` at `opacity: 0.2` (its mid/rest value) so reduced-motion users keep the design layer — movement removed, opacity/color kept. Added `View` to the react-native import.
+
+**Gate results:**
+- `npx tsc --noEmit`: `login.tsx` clean; only the same 5 residual errors in the 3 unmigrated tab screens (settings/pipeline/conversation).
+- `npx expo export --platform ios`: clean bundle — `iOS Bundled 5609ms (2536 modules)`, no errors. Output dir deleted.
