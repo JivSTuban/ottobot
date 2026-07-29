@@ -867,6 +867,12 @@ async def setup_push_token_table() -> None:
         """)
 
 
+@app.get("/me/business")
+async def get_my_business(business_id: str = Depends(get_business_id_from_token)):
+    """Return the caller's business_id, derived from the verified JWT."""
+    return {"business_id": business_id}
+
+
 @app.get("/leads")
 async def get_leads(business_id: str = Depends(get_business_id_from_token)):
     """
