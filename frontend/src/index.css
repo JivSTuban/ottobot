@@ -178,7 +178,7 @@ input:focus-visible {
 
 /* Industry card hover state */
 .industry-card:hover {
-  border-color: var(--accent) !important;
+  border-color: var(--text-muted) !important;
 }
 
 /* Send button active state — shadcn Button handles hover/disabled via its own classes */

@@ -69,7 +69,7 @@ export function IndustrySelector({ onSelect }: IndustrySelectorProps) {
                 borderRadius: 8,
                 background: "var(--surface)",
                 border: isSelected
-                  ? "2px solid var(--accent)"
+                  ? "2px solid var(--text)"
                   : "1px solid var(--border)",
                 boxShadow: "none",
                 cursor: "pointer",

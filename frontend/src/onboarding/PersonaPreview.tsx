@@ -25,7 +25,7 @@ function AgentAvatar({ name }: { name: string }) {
   const initials = name.slice(0, 2).toUpperCase();
   return (
     <div
-      className="flex size-16 items-center justify-center rounded-full bg-primary text-lg font-semibold text-primary-foreground"
+      className="flex size-16 items-center justify-center rounded-full bg-surface-2 text-lg font-semibold text-foreground"
       aria-hidden="true"
     >
       {initials}

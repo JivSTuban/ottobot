@@ -25,7 +25,7 @@ export function Dashboard() {
           <span className="text-xs text-muted-foreground">Operator cockpit</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="inline-block h-2 w-2 rounded-full bg-[var(--status-booked)]" />
+          <span className="inline-block h-2 w-2 rounded-full bg-[var(--text-muted)]" />
           <span className="text-xs text-muted-foreground">Agent active</span>
         </div>
       </header>
