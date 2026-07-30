@@ -5,9 +5,13 @@
 import type { AvailabilityDay } from "./fixtures.ts";
 
 function slotColor(slots: number): string {
-  if (slots === 0) return "bg-surface-2 text-muted-foreground";
-  if (slots <= 2) return "bg-[var(--status-hot)]/10 text-[var(--status-hot)]";
-  return "bg-[var(--status-booked)]/10 text-[var(--status-booked)]";
+  // Accent-discipline: signal green (--accent/--status-booked/bg-primary) is reserved
+  // for the primary CTA and the `booked` lead status only — never as a calendar heat color.
+  // Availability uses neutral emphasis: filled surface for high-availability days,
+  // muted text for low/no availability. Legible in both light and dark.
+  if (slots === 0) return "bg-transparent text-[var(--text-muted)]";
+  if (slots <= 2) return "bg-surface text-[var(--text-muted)]";
+  return "bg-surface-2 text-[var(--text)]";
 }
 
 interface AvailabilityGlanceProps {

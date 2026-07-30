@@ -11,9 +11,12 @@ export function conversionPct(booked: number, leads: number): number {
   return Math.round((booked / leads) * 100);
 }
 
+/** Deterministic en-US grouping formatter — stable across environments/locales. */
+const groupingFormatter = new Intl.NumberFormat("en-US", { useGrouping: true });
+
 /**
  * Formats a number with thousands separators (e.g. 3547 → "3,547").
  */
 export function fmtNum(n: number): string {
-  return n.toLocaleString("en-US");
+  return groupingFormatter.format(n);
 }
