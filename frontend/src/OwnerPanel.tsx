@@ -14,6 +14,7 @@ import { PERSONA_ASSETS } from "./assets/personas";
 import { Badge } from "./components/ui/badge";
 import { Button } from "./components/ui/button";
 import { Input } from "./components/ui/input";
+import { BookedBeat } from "./demo/BookedBeat.tsx";
 
 interface OwnerPanelProps {
   messages: Message[];
@@ -235,6 +236,19 @@ export function OwnerPanel({ messages, stage, escalated, industry, proposed_appo
             </div>
           )}
         </section>
+      )}
+
+      {/* BookedBeat hero moment — fires once when status reaches booked */}
+      {leadStatus === "booked" && (
+        <div
+          style={{
+            position: "relative",
+            zIndex: 1,
+            borderTop: "1px solid var(--border)",
+          }}
+        >
+          <BookedBeat />
+        </div>
       )}
 
       {/* Conversation mirror — read-only */}
