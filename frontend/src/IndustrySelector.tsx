@@ -10,7 +10,6 @@ import { useState } from "react";
 import type { IndustryKey } from "./assets/personas";
 import { PERSONA_ASSETS } from "./assets/personas";
 import { Button } from "./components/ui/button";
-import { Card } from "./components/ui/card";
 
 interface IndustrySelectorProps {
   onSelect: (industry: IndustryKey) => void;
