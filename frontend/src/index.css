@@ -261,7 +261,7 @@ input.chat-input:focus {
     --chart-5: oklch(0.269 0 0);
     --sidebar: oklch(0.205 0 0);
     --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
+    --sidebar-primary: var(--accent);
     --sidebar-primary-foreground: oklch(0.985 0 0);
     --sidebar-accent: oklch(0.269 0 0);
     --sidebar-accent-foreground: oklch(0.985 0 0);
@@ -279,20 +279,47 @@ input.chat-input:focus {
   }
 }
 
-/* Override shadcn's --primary with our signal-green tokens (after @layer base) */
+/* Override shadcn's oklch defaults with our design-system tokens (after @layer base).
+   Rule: no oklch hue in 250–290 (indigo/violet range) anywhere in this file.
+   shadcn's --accent is a hover-surface var — map it to --surface-2, NOT our brand accent.
+   Brand accent lives only on --primary / --color-primary. */
 :root {
   --primary: var(--accent);
   --primary-foreground: var(--accent-fg);
+  --secondary: var(--surface-2);
+  --secondary-foreground: var(--text);
+  --accent: var(--surface-2);
+  --accent-foreground: var(--text);
+  --ring: var(--accent);
   --background: var(--bg);
   --foreground: var(--text);
   --muted: var(--surface);
   --muted-foreground: var(--text-muted);
+  --sidebar-primary: var(--accent);
+  --sidebar-primary-foreground: var(--accent-fg);
+  --chart-1: var(--status-qualifying);
+  --chart-2: var(--status-hot);
+  --chart-3: var(--status-booked);
+  --chart-4: var(--status-new);
+  --chart-5: var(--status-escalated);
 }
 .dark {
   --primary: var(--accent);
   --primary-foreground: var(--accent-fg);
+  --secondary: var(--surface-2);
+  --secondary-foreground: var(--text);
+  --accent: var(--surface-2);
+  --accent-foreground: var(--text);
+  --ring: var(--accent);
   --background: var(--bg);
   --foreground: var(--text);
   --muted: var(--surface);
   --muted-foreground: var(--text-muted);
+  --sidebar-primary: var(--accent);
+  --sidebar-primary-foreground: var(--accent-fg);
+  --chart-1: var(--status-qualifying);
+  --chart-2: var(--status-hot);
+  --chart-3: var(--status-booked);
+  --chart-4: var(--status-new);
+  --chart-5: var(--status-escalated);
 }
