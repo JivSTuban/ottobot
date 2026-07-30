@@ -14,4 +14,14 @@ describe("no leftover indigo oklch defaults", () => {
     const indigo = matches.map((m) => Number(m[1])).filter((h) => h >= 250 && h <= 290);
     expect(indigo).toEqual([]);
   });
+
+  // Regression guard: the brand --accent (signal green) must never be remapped to a
+  // surface var — doing so cascades into --primary/--ring and renders the CTA gray.
+  it("never remaps the brand --accent to a surface var", () => {
+    expect(indexCss).not.toMatch(/--accent:\s*var\(--surface/);
+  });
+
+  it("keeps --color-primary wired to the brand --accent", () => {
+    expect(indexCss).toMatch(/--color-primary:\s*var\(--accent\)/);
+  });
 });

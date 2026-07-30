@@ -24,6 +24,10 @@
   --color-ring: var(--accent);
   --color-secondary: var(--surface);
   --color-secondary-foreground: var(--text);
+  /* shadcn's `bg-accent` is a neutral HOVER surface — decouple it from the brand
+     --accent (green) so --color-primary stays green. Do NOT remap brand --accent. */
+  --color-accent: var(--surface-2);
+  --color-accent-foreground: var(--text);
   --color-destructive: #EF4444;
   --color-input: var(--border);
   --color-card: var(--surface);
@@ -281,15 +285,15 @@ input.chat-input:focus {
 
 /* Override shadcn's oklch defaults with our design-system tokens (after @layer base).
    Rule: no oklch hue in 250–290 (indigo/violet range) anywhere in this file.
-   shadcn's --accent is a hover-surface var — map it to --surface-2, NOT our brand accent.
-   Brand accent lives only on --primary / --color-primary. */
+   NOTE: brand --accent (green) lives in tokens.css and MUST NOT be remapped here —
+   --primary and --ring both resolve to it. shadcn's hover-surface `bg-accent` utility
+   is neutralized via --color-accent in @theme inline (top of file), not by clobbering
+   the brand --accent var. */
 :root {
   --primary: var(--accent);
   --primary-foreground: var(--accent-fg);
   --secondary: var(--surface-2);
   --secondary-foreground: var(--text);
-  --accent: var(--surface-2);
-  --accent-foreground: var(--text);
   --ring: var(--accent);
   --background: var(--bg);
   --foreground: var(--text);
@@ -308,8 +312,6 @@ input.chat-input:focus {
   --primary-foreground: var(--accent-fg);
   --secondary: var(--surface-2);
   --secondary-foreground: var(--text);
-  --accent: var(--surface-2);
-  --accent-foreground: var(--text);
   --ring: var(--accent);
   --background: var(--bg);
   --foreground: var(--text);
