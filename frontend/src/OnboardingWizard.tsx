@@ -13,6 +13,11 @@
  */
 
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
+import { StepRail } from "@/onboarding/StepRail";
+import { PersonaPreview } from "@/onboarding/PersonaPreview";
 
 type IndustryOption = "dental" | "aesthetics" | "real_estate";
 
@@ -42,9 +47,34 @@ const INITIAL_STATE: OnboardingState = {
   pricing: "",
 };
 
+const STEPS = ["Account", "Business", "Services", "Persona", "Confirm"];
+
 interface OnboardingWizardProps {
   /** Called when onboarding completes — navigates to dashboard */
   onComplete?: (businessId: string) => void;
+}
+
+/** Left-aligned field label + shadcn Input combo. */
+function Field({
+  label,
+  htmlFor,
+  children,
+}: {
+  label: string;
+  htmlFor: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label
+        htmlFor={htmlFor}
+        className="text-sm font-medium text-foreground"
+      >
+        {label}
+      </label>
+      {children}
+    </div>
+  );
 }
 
 export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
@@ -156,233 +186,236 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
     }
   }
 
+  // StepRail uses 0-based index; step state is 1-based
+  const railCurrent = step - 1;
+
   return (
-    <div
-      className="onboarding-wizard"
-      style={{
-        minHeight: "100vh",
-        background: "var(--bg-dominant)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "var(--space-lg)",
-      }}
-    >
-      <div
-        style={{
-          background: "var(--bg-secondary)",
-          borderRadius: 12,
-          padding: "var(--space-lg)",
-          width: "100%",
-          maxWidth: 480,
-        }}
-      >
-        {/* Step indicator */}
-        <div
-          className="step-indicator"
-          style={{ display: "flex", gap: 8, marginBottom: "var(--space-lg)" }}
-        >
-          {([1, 2, 3, 4, 5] as const).map((s) => (
-            <div
-              key={s}
-              style={{
-                flex: 1,
-                height: 4,
-                borderRadius: 2,
-                background: s <= step ? "var(--accent)" : "#334155",
-              }}
-            />
-          ))}
+    <div className="onboarding-wizard flex min-h-screen items-start justify-center bg-background px-4 py-12">
+      <div className="flex w-full max-w-3xl gap-8">
+        {/* Left: step rail */}
+        <div className="hidden pt-1 sm:block">
+          <StepRail steps={STEPS} current={railCurrent} />
         </div>
 
-        {error && (
-          <div
-            role="alert"
-            style={{
-              background: "var(--destructive)",
-              color: "#fff",
-              padding: "8px 12px",
-              borderRadius: 6,
-              marginBottom: 12,
-              fontSize: 14,
-            }}
-          >
-            {error}
-          </div>
-        )}
-
-        {/* Step 1: Account */}
-        {step === 1 && (
-          <div className="step step-1">
-            <h2 style={{ color: "var(--text-primary)", marginBottom: 16 }}>
-              Gumawa ng Account
-            </h2>
-            <label style={{ display: "block", marginBottom: 12 }}>
-              <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>Email</span>
-              <input
-                type="email"
-                aria-label="Email"
-                value={form.email}
-                onChange={(e) => update("email", e.target.value)}
-                style={{ display: "block", width: "100%", marginTop: 4 }}
-              />
-            </label>
-            <label style={{ display: "block", marginBottom: 16 }}>
-              <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>Password</span>
-              <input
-                type="password"
-                aria-label="Password"
-                value={form.password}
-                onChange={(e) => update("password", e.target.value)}
-                style={{ display: "block", width: "100%", marginTop: 4 }}
-              />
-            </label>
-            <button onClick={handleStep1Next} style={{ width: "100%" }}>
-              Susunod →
-            </button>
-          </div>
-        )}
-
-        {/* Step 2: Business basics */}
-        {step === 2 && (
-          <div className="step step-2">
-            <h2 style={{ color: "var(--text-primary)", marginBottom: 16 }}>
-              Business Info
-            </h2>
-            <label style={{ display: "block", marginBottom: 12 }}>
-              <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>Business Name</span>
-              <input
-                type="text"
-                aria-label="Business Name"
-                value={form.businessName}
-                onChange={(e) => update("businessName", e.target.value)}
-                style={{ display: "block", width: "100%", marginTop: 4 }}
-              />
-            </label>
-            <label style={{ display: "block", marginBottom: 12 }}>
-              <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>Industry</span>
-              <select
-                aria-label="Industry"
-                value={form.industry}
-                onChange={(e) => update("industry", e.target.value as IndustryOption)}
-                style={{ display: "block", width: "100%", marginTop: 4 }}
-              >
-                <option value="dental">Dental</option>
-                <option value="aesthetics">Aesthetics</option>
-                <option value="real_estate">Real Estate</option>
-              </select>
-            </label>
-            <label style={{ display: "block", marginBottom: 12 }}>
-              <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>City</span>
-              <input
-                type="text"
-                aria-label="City"
-                value={form.city}
-                onChange={(e) => update("city", e.target.value)}
-                style={{ display: "block", width: "100%", marginTop: 4 }}
-              />
-            </label>
-            <label style={{ display: "block", marginBottom: 16 }}>
-              <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>Phone</span>
-              <input
-                type="tel"
-                aria-label="Phone"
-                value={form.phone}
-                onChange={(e) => update("phone", e.target.value)}
-                style={{ display: "block", width: "100%", marginTop: 4 }}
-              />
-            </label>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => setStep(1)} style={{ flex: 1 }}>← Bumalik</button>
-              <button onClick={handleStep2Next} style={{ flex: 2 }}>Susunod →</button>
-            </div>
-          </div>
-        )}
-
-        {/* Step 3: Services + pricing */}
-        {step === 3 && (
-          <div className="step step-3">
-            <h2 style={{ color: "var(--text-primary)", marginBottom: 16 }}>
-              Mga Serbisyo at Presyo
-            </h2>
-            {(["service1", "service2", "service3"] as const).map((field, i) => (
-              <label key={field} style={{ display: "block", marginBottom: 12 }}>
-                <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>
-                  Serbisyo {i + 1}{i > 0 ? " (optional)" : ""}
-                </span>
-                <input
-                  type="text"
-                  aria-label={`Service ${i + 1}`}
-                  value={form[field]}
-                  onChange={(e) => update(field, e.target.value)}
-                  style={{ display: "block", width: "100%", marginTop: 4 }}
-                />
-              </label>
-            ))}
-            <label style={{ display: "block", marginBottom: 16 }}>
-              <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>
-                Presyo / Price Range
-              </span>
-              <input
-                type="text"
-                aria-label="Pricing"
-                value={form.pricing}
-                onChange={(e) => update("pricing", e.target.value)}
-                placeholder="e.g. P500-P2500"
-                style={{ display: "block", width: "100%", marginTop: 4 }}
-              />
-            </label>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => setStep(2)} style={{ flex: 1 }}>← Bumalik</button>
-              <button onClick={handleStep3Next} disabled={loading} style={{ flex: 2 }}>
-                {loading ? "Loading..." : "I-preview →"}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Step 4: Preview */}
-        {step === 4 && (
-          <div className="step step-4">
-            <h2 style={{ color: "var(--text-primary)", marginBottom: 16 }}>
-              Preview ng Agent Persona
-            </h2>
-            <pre
-              className="persona-preview"
-              style={{
-                background: "#0f172a",
-                color: "var(--text-secondary)",
-                padding: 12,
-                borderRadius: 8,
-                fontSize: 13,
-                whiteSpace: "pre-wrap",
-                maxHeight: 240,
-                overflowY: "auto",
-                marginBottom: 16,
-              }}
+        {/* Right: step content */}
+        <Card className="flex-1">
+          <CardContent className="py-6">
+            {/* Mobile step indicator (no rail on mobile) */}
+            <div
+              className="step-indicator mb-6 flex gap-1.5 sm:hidden"
+              aria-hidden="true"
             >
-              {preview}
-            </pre>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => setStep(3)} style={{ flex: 1 }}>← Baguhin</button>
-              <button onClick={handleSubmit} disabled={loading} style={{ flex: 2 }}>
-                {loading ? "Sine-save..." : "Kumpirmahin at Magsimula →"}
-              </button>
+              {([1, 2, 3, 4, 5] as const).map((s) => (
+                <div
+                  key={s}
+                  className={[
+                    "h-1 flex-1 rounded-full",
+                    s <= step ? "bg-primary" : "bg-border",
+                  ].join(" ")}
+                />
+              ))}
             </div>
-          </div>
-        )}
 
-        {/* Step 5: Done */}
-        {step === 5 && (
-          <div className="step step-5">
-            <h2 style={{ color: "var(--text-primary)", marginBottom: 8 }}>
-              Tapos na! 🎉
-            </h2>
-            <p style={{ color: "var(--text-secondary)", marginBottom: 16 }}>
-              Naka-set up na ang iyong OttoBot. Papunta na tayo sa dashboard.
-            </p>
-          </div>
-        )}
+            {error && (
+              <div
+                role="alert"
+                className="mb-4 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive"
+              >
+                {error}
+              </div>
+            )}
+
+            {/* Step 1: Account */}
+            {step === 1 && (
+              <div className="step step-1 flex flex-col gap-5">
+                <h2 className="text-lg font-semibold text-foreground">
+                  Gumawa ng Account
+                </h2>
+                <Field label="Email" htmlFor="email">
+                  <Input
+                    id="email"
+                    type="email"
+                    aria-label="Email"
+                    value={form.email}
+                    onChange={(e) => update("email", e.target.value)}
+                  />
+                </Field>
+                <Field label="Password" htmlFor="password">
+                  <Input
+                    id="password"
+                    type="password"
+                    aria-label="Password"
+                    value={form.password}
+                    onChange={(e) => update("password", e.target.value)}
+                  />
+                </Field>
+                <Button className="w-full" onClick={handleStep1Next}>
+                  Susunod →
+                </Button>
+              </div>
+            )}
+
+            {/* Step 2: Business basics */}
+            {step === 2 && (
+              <div className="step step-2 flex flex-col gap-5">
+                <h2 className="text-lg font-semibold text-foreground">
+                  Business Info
+                </h2>
+                <Field label="Business Name" htmlFor="businessName">
+                  <Input
+                    id="businessName"
+                    type="text"
+                    aria-label="Business Name"
+                    value={form.businessName}
+                    onChange={(e) => update("businessName", e.target.value)}
+                  />
+                </Field>
+                <div className="flex flex-col gap-1.5">
+                  <label
+                    htmlFor="industry"
+                    className="text-sm font-medium text-foreground"
+                  >
+                    Industry
+                  </label>
+                  <select
+                    id="industry"
+                    aria-label="Industry"
+                    value={form.industry}
+                    onChange={(e) =>
+                      update("industry", e.target.value as IndustryOption)
+                    }
+                    className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                  >
+                    <option value="dental">Dental</option>
+                    <option value="aesthetics">Aesthetics</option>
+                    <option value="real_estate">Real Estate</option>
+                  </select>
+                </div>
+                <Field label="City" htmlFor="city">
+                  <Input
+                    id="city"
+                    type="text"
+                    aria-label="City"
+                    value={form.city}
+                    onChange={(e) => update("city", e.target.value)}
+                  />
+                </Field>
+                <Field label="Phone" htmlFor="phone">
+                  <Input
+                    id="phone"
+                    type="tel"
+                    aria-label="Phone"
+                    value={form.phone}
+                    onChange={(e) => update("phone", e.target.value)}
+                  />
+                </Field>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => setStep(1)}
+                  >
+                    ← Bumalik
+                  </Button>
+                  <Button className="flex-[2]" onClick={handleStep2Next}>
+                    Susunod →
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Step 3: Services + pricing */}
+            {step === 3 && (
+              <div className="step step-3 flex flex-col gap-5">
+                <h2 className="text-lg font-semibold text-foreground">
+                  Mga Serbisyo at Presyo
+                </h2>
+                {(["service1", "service2", "service3"] as const).map(
+                  (field, i) => (
+                    <Field
+                      key={field}
+                      label={`Serbisyo ${i + 1}${i > 0 ? " (optional)" : ""}`}
+                      htmlFor={field}
+                    >
+                      <Input
+                        id={field}
+                        type="text"
+                        aria-label={`Service ${i + 1}`}
+                        value={form[field]}
+                        onChange={(e) => update(field, e.target.value)}
+                      />
+                    </Field>
+                  )
+                )}
+                <Field label="Presyo / Price Range" htmlFor="pricing">
+                  <Input
+                    id="pricing"
+                    type="text"
+                    aria-label="Pricing"
+                    value={form.pricing}
+                    onChange={(e) => update("pricing", e.target.value)}
+                    placeholder="e.g. P500-P2500"
+                  />
+                </Field>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => setStep(2)}
+                  >
+                    ← Bumalik
+                  </Button>
+                  <Button
+                    className="flex-[2]"
+                    onClick={handleStep3Next}
+                    disabled={loading}
+                  >
+                    {loading ? "Loading..." : "I-preview →"}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Step 4: Persona preview */}
+            {step === 4 && (
+              <div className="step step-4 flex flex-col gap-6">
+                <h2 className="text-lg font-semibold text-foreground">
+                  Preview ng Agent Persona
+                </h2>
+                <PersonaPreview persona={preview} />
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => setStep(3)}
+                  >
+                    ← Baguhin
+                  </Button>
+                  <Button
+                    className="flex-[2]"
+                    onClick={handleSubmit}
+                    disabled={loading}
+                  >
+                    {loading ? "Sine-save..." : "Kumpirmahin at Magsimula →"}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Step 5: Done */}
+            {step === 5 && (
+              <div className="step step-5 flex flex-col gap-3">
+                <h2 className="text-lg font-semibold text-foreground">
+                  Tapos na! 🎉
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Naka-set up na ang iyong OttoBot. Papunta na tayo sa
+                  dashboard.
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
