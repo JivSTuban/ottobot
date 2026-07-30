@@ -65,7 +65,7 @@ function Gate() {
 export default function RootLayout() {
   return (
     <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} tokenCache={tokenCache}>
-      <TamaguiProvider config={tamaguiConfig} defaultTheme="dark">
+      <TamaguiProvider config={tamaguiConfig} defaultTheme="light">
         <ClerkLoaded><Gate /></ClerkLoaded>
       </TamaguiProvider>
     </ClerkProvider>

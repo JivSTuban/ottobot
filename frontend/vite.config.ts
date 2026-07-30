@@ -22,5 +22,11 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
+    server: {
+      fs: {
+        // Allow vitest to resolve modules outside the frontend root (e.g. ../mobile/theme/tokens.ts)
+        allow: [".."],
+      },
+    },
   },
 });
