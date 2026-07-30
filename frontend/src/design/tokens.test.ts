@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { tokens, cssVars } from "./tokens.ts";
+import { tokens } from "./tokens.ts";
 import { cssVars as cssVarsFn } from "./cssVars.ts";
 
 describe("design tokens", () => {
