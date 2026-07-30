@@ -57,11 +57,15 @@ export function PersonaPreview({ persona }: PersonaPreviewProps) {
     // Set initial hidden state
     gsap.set(targets, { opacity: 0, y: 12 });
 
+    // Motion budget: the last tween must finish ≤300ms.
+    // avatar: 0 → 120ms.
+    // name:  starts at 120-50=70ms, 100ms → ends 170ms.
+    // blurb: starts at 170-50=120ms, 100ms → ends 220ms total ≤ 300ms.
     const tl = gsap.timeline();
     tl.to(avatarRef.current, {
       opacity: 1,
       y: 0,
-      duration: 0.18,
+      duration: 0.12,
       ease: "power2.out",
     })
       .to(
@@ -69,7 +73,7 @@ export function PersonaPreview({ persona }: PersonaPreviewProps) {
         {
           opacity: 1,
           y: 0,
-          duration: 0.15,
+          duration: 0.1,
           ease: "power2.out",
         },
         "-=0.05"
@@ -79,7 +83,7 @@ export function PersonaPreview({ persona }: PersonaPreviewProps) {
         {
           opacity: 1,
           y: 0,
-          duration: 0.15,
+          duration: 0.1,
           ease: "power2.out",
         },
         "-=0.05"
