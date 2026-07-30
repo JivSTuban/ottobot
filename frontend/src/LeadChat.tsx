@@ -10,6 +10,8 @@
 import { useState, useRef, useEffect } from "react";
 import { Send } from "lucide-react";
 import type { Message } from "./types";
+import { Button } from "./components/ui/button";
+import { Input } from "./components/ui/input";
 
 interface LeadChatProps {
   messages: Message[];
@@ -51,7 +53,7 @@ export function LeadChat({ messages, onSend, agentName, industrySrc }: LeadChatP
         display: "flex",
         flexDirection: "column",
         position: "relative",
-        borderRight: "1px solid #334155",
+        borderRight: "1px solid var(--border)",
         backgroundImage: `url(${industrySrc})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
@@ -62,7 +64,7 @@ export function LeadChat({ messages, onSend, agentName, industrySrc }: LeadChatP
         style={{
           position: "absolute",
           inset: 0,
-          background: "var(--bg-dominant)",
+          background: "var(--bg)",
           opacity: 0.9,
           pointerEvents: "none",
           zIndex: 0,
@@ -74,7 +76,7 @@ export function LeadChat({ messages, onSend, agentName, industrySrc }: LeadChatP
         style={{
           height: 48,
           minHeight: 48,
-          background: "var(--bg-secondary)",
+          background: "var(--surface)",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -87,7 +89,7 @@ export function LeadChat({ messages, onSend, agentName, industrySrc }: LeadChatP
           style={{
             fontSize: "18px",
             fontWeight: 600,
-            color: "var(--text-primary)",
+            color: "var(--text)",
           }}
         >
           Lead Chat
@@ -157,15 +159,6 @@ export function LeadChat({ messages, onSend, agentName, industrySrc }: LeadChatP
               className={`message-bubble ${msg.role === "user" ? "user" : "agent"}${
                 msg.streaming ? " streaming-cursor" : ""
               }`}
-              style={{
-                background: msg.role === "user" ? "#2d2f3e" : "var(--bg-secondary)",
-                alignSelf: msg.role === "user" ? "flex-end" : "flex-start",
-                padding: "var(--space-sm)",
-                borderRadius: 8,
-                fontSize: "14px",
-                color: "var(--text-primary)",
-                maxWidth: "80%",
-              }}
             >
               {msg.content}
             </div>
@@ -179,7 +172,7 @@ export function LeadChat({ messages, onSend, agentName, industrySrc }: LeadChatP
         style={{
           height: 72,
           minHeight: 72,
-          background: "var(--bg-secondary)",
+          background: "var(--surface)",
           display: "flex",
           alignItems: "center",
           padding: "0 var(--space-md)",
@@ -188,26 +181,16 @@ export function LeadChat({ messages, onSend, agentName, industrySrc }: LeadChatP
           zIndex: 1,
         }}
       >
-        <input
+        <Input
           type="text"
           className="chat-input"
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Isulat ang mensahe..."
-          style={{
-            flex: 1,
-            height: 44,
-            background: "var(--bg-dominant)",
-            border: "1px solid #334155",
-            borderRadius: 8,
-            padding: "0 var(--space-md)",
-            fontSize: "14px",
-            color: "var(--text-primary)",
-            outline: "none",
-          }}
+          style={{ flex: 1, height: 44 }}
         />
-        <button
+        <Button
           className="send-btn"
           onClick={handleSubmit}
           disabled={!inputText.trim()}
@@ -216,17 +199,14 @@ export function LeadChat({ messages, onSend, agentName, industrySrc }: LeadChatP
             width: 44,
             height: 44,
             minHeight: 44,
-            background: "var(--accent)",
-            border: "none",
-            borderRadius: 8,
+            padding: 0,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            cursor: inputText.trim() ? "pointer" : "not-allowed",
           }}
         >
-          <Send size={18} color="#ffffff" />
-        </button>
+          <Send size={18} />
+        </Button>
       </div>
     </section>
   );

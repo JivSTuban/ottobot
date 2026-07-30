@@ -9,6 +9,8 @@
 import { useState } from "react";
 import type { IndustryKey } from "./assets/personas";
 import { PERSONA_ASSETS } from "./assets/personas";
+import { Button } from "./components/ui/button";
+import { Card } from "./components/ui/card";
 
 interface IndustrySelectorProps {
   onSelect: (industry: IndustryKey) => void;
@@ -29,7 +31,7 @@ export function IndustrySelector({ onSelect }: IndustrySelectorProps) {
         minHeight: "100vh",
         gap: "var(--space-2xl)",
         padding: "var(--space-lg)",
-        background: "var(--bg-dominant)",
+        background: "var(--bg)",
       }}
     >
       <h1
@@ -38,7 +40,7 @@ export function IndustrySelector({ onSelect }: IndustrySelectorProps) {
           fontWeight: 600,
           lineHeight: 1.2,
           margin: 0,
-          color: "var(--text-primary)",
+          color: "var(--text)",
         }}
       >
         Piliin ang Industry
@@ -66,13 +68,11 @@ export function IndustrySelector({ onSelect }: IndustrySelectorProps) {
                 height: 160,
                 padding: "var(--space-md)",
                 borderRadius: 8,
-                background: "var(--bg-secondary)",
+                background: "var(--surface)",
                 border: isSelected
                   ? "2px solid var(--accent)"
-                  : "1px solid #334155",
-                boxShadow: isSelected
-                  ? "0 0 0 2px rgba(99,102,241,0.25)"
-                  : "none",
+                  : "1px solid var(--border)",
+                boxShadow: "none",
                 cursor: "pointer",
                 transition: "border-color 150ms ease",
                 display: "flex",
@@ -86,7 +86,7 @@ export function IndustrySelector({ onSelect }: IndustrySelectorProps) {
                 backgroundBlendMode: "overlay",
                 // Low opacity industry background via overlay blend
                 position: "relative",
-                color: "var(--text-primary)",
+                color: "var(--text)",
               }}
               aria-pressed={isSelected}
             >
@@ -95,7 +95,7 @@ export function IndustrySelector({ onSelect }: IndustrySelectorProps) {
                 style={{
                   position: "absolute",
                   inset: 0,
-                  background: "var(--bg-secondary)",
+                  background: "var(--surface)",
                   opacity: 0.85,
                   borderRadius: 7,
                   pointerEvents: "none",
@@ -125,7 +125,7 @@ export function IndustrySelector({ onSelect }: IndustrySelectorProps) {
                   style={{
                     fontSize: "14px",
                     fontWeight: 600,
-                    color: "var(--text-primary)",
+                    color: "var(--text)",
                     textAlign: "center",
                   }}
                 >
@@ -147,8 +147,8 @@ export function IndustrySelector({ onSelect }: IndustrySelectorProps) {
         })}
       </div>
 
-      {/* Simulan button */}
-      <button
+      {/* Simulan button — primary green CTA */}
+      <Button
         onClick={() => {
           if (selected) onSelect(selected);
         }}
@@ -157,19 +157,12 @@ export function IndustrySelector({ onSelect }: IndustrySelectorProps) {
           height: 44,
           maxWidth: 320,
           width: "100%",
-          background: selected !== null ? "var(--accent)" : "#334155",
-          color: "var(--text-primary)",
-          border: "none",
-          borderRadius: 8,
           fontSize: "16px",
           fontWeight: 600,
-          cursor: selected !== null ? "pointer" : "not-allowed",
-          opacity: selected === null ? 0.6 : 1,
-          transition: "opacity 150ms ease, background-color 150ms ease",
         }}
       >
         Simulan
-      </button>
+      </Button>
     </div>
   );
 }

@@ -11,6 +11,9 @@ import type { Message, Stage, AppointmentMessage } from "./types";
 import { stageToLeadStatus } from "./types";
 import type { IndustryKey } from "./assets/personas";
 import { PERSONA_ASSETS } from "./assets/personas";
+import { Badge } from "./components/ui/badge";
+import { Button } from "./components/ui/button";
+import { Input } from "./components/ui/input";
 
 interface OwnerPanelProps {
   messages: Message[];
@@ -42,10 +45,25 @@ function getBadgeLabel(stage: Stage): string {
   }
 }
 
+/** Returns inline style color for the status dot based on LeadStatus */
+function getStatusDotColor(leadStatus: ReturnType<typeof stageToLeadStatus>): string {
+  switch (leadStatus) {
+    case "new":
+      return "var(--status-new)";
+    case "qualifying":
+      return "var(--status-qualifying)";
+    case "hot":
+      return "var(--status-hot)";
+    case "booked":
+      return "var(--status-booked)";
+  }
+}
+
 export function OwnerPanel({ messages, stage, escalated, industry, proposed_appointment, thread_id, send, escalationAlert }: OwnerPanelProps) {
   const asset = industry ? PERSONA_ASSETS[industry] : null;
   const badgeLabel = getBadgeLabel(stage);
   const leadStatus = stageToLeadStatus(stage);
+  const statusColor = getStatusDotColor(leadStatus);
 
   const [counterTime, setCounterTime] = useState("");
   const [showCounter, setShowCounter] = useState(false);
@@ -83,7 +101,7 @@ export function OwnerPanel({ messages, stage, escalated, industry, proposed_appo
         display: "flex",
         flexDirection: "column",
         position: "relative",
-        borderLeft: "1px solid #334155",
+        borderLeft: "1px solid var(--border)",
         // Industry background at very low opacity
         backgroundImage: asset ? `url(${asset.industrySrc})` : undefined,
         backgroundSize: "cover",
@@ -95,7 +113,7 @@ export function OwnerPanel({ messages, stage, escalated, industry, proposed_appo
         style={{
           position: "absolute",
           inset: 0,
-          background: "var(--bg-dominant)",
+          background: "var(--bg)",
           opacity: 0.92,
           pointerEvents: "none",
           zIndex: 0,
@@ -143,7 +161,7 @@ export function OwnerPanel({ messages, stage, escalated, industry, proposed_appo
         style={{
           height: 48,
           minHeight: 48,
-          background: "var(--bg-secondary)",
+          background: "var(--surface)",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -156,23 +174,34 @@ export function OwnerPanel({ messages, stage, escalated, industry, proposed_appo
           style={{
             fontSize: "18px",
             fontWeight: 600,
-            color: "var(--text-primary)",
+            color: "var(--text)",
           }}
         >
           Owner View
         </span>
-        <span
+        <Badge
           className={`badge badge-${leadStatus}`}
           style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
             fontSize: "12px",
             fontWeight: 600,
-            padding: "4px 8px",
-            borderRadius: 4,
             transition: "background-color 200ms ease",
           }}
         >
+          <span
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: "50%",
+              background: statusColor,
+              display: "inline-block",
+              flexShrink: 0,
+            }}
+          />
           {badgeLabel}
-        </span>
+        </Badge>
       </div>
 
       {/* Appointments section — visible only at propose_appointment stage */}
@@ -180,29 +209,29 @@ export function OwnerPanel({ messages, stage, escalated, industry, proposed_appo
         <section
           className="appointments-section"
           aria-label="Appointments"
-          style={{ position: "relative", zIndex: 1, padding: "var(--space-md)", borderTop: "1px solid #334155" }}
+          style={{ position: "relative", zIndex: 1, padding: "var(--space-md)", borderTop: "1px solid var(--border)" }}
         >
-          <h3 style={{ margin: "0 0 8px", fontSize: "14px", fontWeight: 600, color: "var(--text-primary)" }}>
+          <h3 style={{ margin: "0 0 8px", fontSize: "14px", fontWeight: 600, color: "var(--text)" }}>
             Appointment Proposal
           </h3>
-          <p className="proposed-time" style={{ margin: "0 0 12px", fontSize: "14px", color: "var(--text-secondary)" }}>
+          <p className="proposed-time" style={{ margin: "0 0 12px", fontSize: "14px", color: "var(--text-muted)" }}>
             {proposed_appointment}
           </p>
           <div className="appointment-actions" style={{ display: "flex", gap: 8 }}>
-            <button onClick={handleConfirm}>Confirm</button>
-            <button onClick={() => setShowCounter(!showCounter)}>Counter-propose</button>
+            <Button variant="outline" onClick={handleConfirm}>Confirm</Button>
+            <Button variant="outline" onClick={() => setShowCounter(!showCounter)}>Counter-propose</Button>
           </div>
           {showCounter && (
             <div className="counter-propose" style={{ marginTop: 8, display: "flex", gap: 8 }}>
-              <input
+              <Input
                 type="text"
                 value={counterTime}
                 onChange={(e) => setCounterTime(e.target.value)}
                 placeholder="e.g. Biyernes ng June 21 sa ika-3 ng hapon"
                 aria-label="Counter-propose time"
-                style={{ flex: 1, padding: "4px 8px", fontSize: "14px" }}
+                style={{ flex: 1 }}
               />
-              <button onClick={handleCounter}>Send Counter</button>
+              <Button variant="outline" onClick={handleCounter}>Send Counter</Button>
             </div>
           )}
         </section>
@@ -227,15 +256,6 @@ export function OwnerPanel({ messages, stage, escalated, industry, proposed_appo
             className={`message-bubble ${msg.role === "user" ? "user" : "agent"}${
               msg.streaming ? " streaming-cursor" : ""
             }`}
-            style={{
-              background: msg.role === "user" ? "#2d2f3e" : "var(--bg-secondary)",
-              alignSelf: msg.role === "user" ? "flex-end" : "flex-start",
-              padding: "var(--space-sm)",
-              borderRadius: 8,
-              fontSize: "14px",
-              color: "var(--text-primary)",
-              maxWidth: "80%",
-            }}
           >
             {msg.content}
           </div>

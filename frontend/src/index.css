@@ -78,25 +78,25 @@ input:focus-visible {
   outline-offset: 2px;
 }
 
-/* Stage badge color pairs per UI-SPEC */
+/* Stage badge color pairs per UI-SPEC — keyed to --status-* tokens */
 .badge-new {
-  background: #334155;
-  color: #94a3b8;
+  background: color-mix(in srgb, var(--status-new) 15%, transparent);
+  color: var(--status-new);
 }
 
 .badge-qualifying {
-  background: #1e3a5f;
-  color: #60a5fa;
+  background: color-mix(in srgb, var(--status-qualifying) 15%, transparent);
+  color: var(--status-qualifying);
 }
 
 .badge-hot {
-  background: #422006;
-  color: #fb923c;
+  background: color-mix(in srgb, var(--status-hot) 15%, transparent);
+  color: var(--status-hot);
 }
 
 .badge-booked {
-  background: #14532d;
-  color: #4ade80;
+  background: color-mix(in srgb, var(--status-booked) 15%, transparent);
+  color: var(--status-booked);
 }
 
 /* Message bubbles */
@@ -110,7 +110,7 @@ input:focus-visible {
 }
 
 .message-bubble.user {
-  background: #2d2f3e;
+  background: var(--surface-2);
   align-self: flex-end;
 }
 
@@ -181,23 +181,17 @@ input:focus-visible {
   border-color: var(--accent) !important;
 }
 
-/* Send button hover/active states */
-.send-btn:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--accent) 85%, black);
-}
-
+/* Send button active state — shadcn Button handles hover/disabled via its own classes */
 .send-btn:active:not(:disabled) {
   transform: scale(0.97);
 }
 
-.send-btn:disabled {
-  opacity: 0.4;
-}
-
-/* Text input focus */
-input.chat-input:focus {
+/* Text input focus — shadcn Input handles this, but keep explicit override */
+input.chat-input:focus,
+.chat-input:focus {
   border-color: var(--accent);
   outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 20%, transparent);
 }
 
 @layer base {
