@@ -3,7 +3,7 @@
     "target": "ES2022",
     "useDefineForClassFields": true,
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "types": ["node", "vite/client"],
+    "types": ["node", "vite/client", "react", "react-dom"],
     "module": "ESNext",
     "skipLibCheck": true,
     "moduleResolution": "bundler",
