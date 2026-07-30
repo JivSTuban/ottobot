@@ -17,6 +17,7 @@ import { IndustrySelector } from "./IndustrySelector";
 import { LeadChat } from "./LeadChat";
 import { OwnerPanel } from "./OwnerPanel";
 import { OnboardingWizard } from "./OnboardingWizard";
+import { Dashboard } from "./Dashboard";
 import { useWebSocket } from "./useWebSocket";
 import { demoScript, advance } from "./demo/script.ts";
 import type { Message, Stage } from "./types.ts";
@@ -111,6 +112,10 @@ function App() {
 
   if (route === "onboarding") {
     return <OnboardingWizard />;
+  }
+
+  if (route === "dashboard") {
+    return <Dashboard />;
   }
 
   return (
