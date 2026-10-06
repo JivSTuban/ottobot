@@ -180,7 +180,7 @@ The first run answered 12 of roughly 80 claims. This is the remaining list, orde
 | Q1 | How do leads reach agents today (on-site message, email, Lead Ads, calls)? Can they expose a webhook, API or email forward? | J2, LEAD-01 |
 | Q2 | Monthly lead volume, and real inquiry-to-first-reply times across agents. Is the "Inquiry Reply" metric computed by the platform? | Section 6 baseline |
 | Q3 | Which channels do their buyers actually use (Messenger, Viber, SMS, calls)? | D4 |
-| Q4 | Who owns the Facebook Page and ad accounts, and can we get an app installed with `ADVERTISE` access (needs `lead_retrieval`, `pages_manage_metadata` and others, C8)? | J2 |
+| Q4 | Who owns the Facebook Page and ad accounts, and can we get an app installed with `ADVERTISE` access (needs `leads_retrieval`, `pages_manage_metadata` and others, C8)? | J2 |
 | Q5 | Which agents join the pilot, and how should assignment work? | HAND-02 |
 | Q6 | Existing privacy notice and consent wording on their forms | CONS-01 |
 | Q7 | Are leads handled on behalf of licensed brokers, and who supervises? | Section 9C |
