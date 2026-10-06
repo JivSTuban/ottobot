@@ -15,7 +15,7 @@ OttoBot — Filipino AI outbound sales agent (Tagalog/Taglish) that books SMB ap
 
 **Stack:** Python 3.12 + FastAPI + LangGraph + Supabase + React/Vite + Expo + Llama 4 Maverick via LiteLLM/Groq
 
-**Current state:** Phases 1–6 shipped (132 tests passing, Phase 06 review 9/9 fixed). Phase 06 mobile UAT tests 6–11 pending; open AI-disclosure bug in `agent/graph.py`. Next up: Phase 07 (Agency / Multi-Account).
+**Current state:** Phases 1–6 shipped (144 tests passing on `feat/neon-clerk-migration`). Migrating Supabase → Neon + Clerk (plan Tasks 7–10 open). Active goal: Filipinohomes pilot MVP, see `docs/PRD-filipinohomes-mvp.md` (supersedes the archived v1 requirements; Phase 07/08 are out of scope for it). Research record: `docs/research/2026-10-06-filipinohomes-deep-research.md`.
 
 ## How to Run
 
